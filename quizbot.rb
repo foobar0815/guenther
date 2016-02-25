@@ -27,7 +27,7 @@ Dir.glob('quizdata/*.utf8') do |item|
         if not $hash
           $hash = Hash.new
         end
-        linesplit = line.split(": ")
+        linesplit = line.split(": ", 2)
         $hash[linesplit.first.strip] = linesplit.last.strip
       end  
     end
@@ -56,8 +56,7 @@ m.on_message { |time,nick,text|
         if $2
           $question = questionpool.sample
           $questioncount = $2.to_i - 1
-          m.say("[" + $question["Category"] + "] " + $question["Question"])
-          #puts ($question["Answer"])
+          m.say($question["Question"])
           $scoreboard = Hash.new
         end
       end
@@ -65,7 +64,7 @@ m.on_message { |time,nick,text|
     elsif text.strip =~ /^(.+?): next$/
       if $question
         $question = questionpool.sample
-        m.say("[" + $question["Category"] + "] " + $question["Question"])
+        m.say($question["Question"])
       else
         m.say("No quiz has been started!")
       end
@@ -77,7 +76,14 @@ m.on_message { |time,nick,text|
       end
     # look for anything if a question was asked
     elsif $question
-      if text.casecmp($question["Answer"]) == 0
+      if $question["Regexp"]
+        if /#{$question["Regexp"]}/ =~ text
+          answered = true
+        end
+      elsif text.casecmp($question["Answer"]) == 0
+        answered = true
+      end
+      if answered == true
         m.say("Correct answer #{nick}!")
         if $scoreboard.has_key?(nick)
           $scoreboard[nick] = $scoreboard[nick] + 1
@@ -87,8 +93,7 @@ m.on_message { |time,nick,text|
         if $questioncount > 0
           $question = questionpool.sample
           $questioncount = $questioncount-1
-          m.say("[" + $question["Category"] + "] " + $question["Question"])
-          #puts ($question["Answer"])
+          m.say($question["Question"])
         else
           $question = nil
           m.say("(.•ˆ•… Scoreboard …•ˆ•.)")
