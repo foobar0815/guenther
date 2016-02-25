@@ -19,8 +19,10 @@ Dir.glob('quizdata/*.utf8') do |item|
   File.open( item ).each do |line|
     if not line.start_with?("#")
       if not line == "\n"
-        if line.start_with?("Question")
+        if line.start_with?("Category")
           $hash = Hash.new
+          $hash["category"] = line.split(": ").last.strip
+        elsif line.start_with?("Question")
           $hash["question"] = line.split(": ").last.strip
         elsif line.start_with?("Answer")
           $hash["answer"] = line.split(": ").last.strip
@@ -53,7 +55,7 @@ m.on_message { |time,nick,text|
         if $2
           $question = questionpool.sample
           $questioncount = $2.to_i - 1
-          m.say($question["question"])
+          m.say("[" + $question["category"] + "] " + $question["question"])
           #puts ($question["answer"])
           $scoreboard = Hash.new
         end
@@ -62,7 +64,7 @@ m.on_message { |time,nick,text|
     elsif text.strip =~ /^(.+?): next$/
       if $question
         $question = questionpool.sample
-        m.say($question["question"])
+        m.say("[" + $question["category"] + "] " + $question["question"])
       else
         m.say("No quiz has been started!")
       end
@@ -84,7 +86,7 @@ m.on_message { |time,nick,text|
         if $questioncount > 0
           $question = questionpool.sample
           $questioncount = $questioncount-1
-          m.say($question["question"])
+          m.say("[" + $question["category"] + "] " + $question["question"])
           #puts ($question["answer"])
         else
           $question = nil
