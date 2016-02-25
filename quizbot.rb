@@ -18,17 +18,18 @@ questionpool = []
 Dir.glob('quizdata/*.utf8') do |item|
   File.open( item ).each do |line|
     if not line.start_with?("#")
-      if not line == "\n"
-        if line.start_with?("Category")
-          $hash = Hash.new
-          $hash["category"] = line.split(": ").last.strip
-        elsif line.start_with?("Question")
-          $hash["question"] = line.split(": ").last.strip
-        elsif line.start_with?("Answer")
-          $hash["answer"] = line.split(": ").last.strip
+      if line == "\n"
+        if $hash
           questionpool.push($hash)
+          $hash = nil
         end
-      end
+      else
+        if not $hash
+          $hash = Hash.new
+        end
+        linesplit = line.split(": ")
+        $hash[linesplit.first.strip] = linesplit.last.strip
+      end  
     end
   end
 end
@@ -55,8 +56,8 @@ m.on_message { |time,nick,text|
         if $2
           $question = questionpool.sample
           $questioncount = $2.to_i - 1
-          m.say("[" + $question["category"] + "] " + $question["question"])
-          #puts ($question["answer"])
+          m.say("[" + $question["Category"] + "] " + $question["Question"])
+          #puts ($question["Answer"])
           $scoreboard = Hash.new
         end
       end
@@ -64,7 +65,7 @@ m.on_message { |time,nick,text|
     elsif text.strip =~ /^(.+?): next$/
       if $question
         $question = questionpool.sample
-        m.say("[" + $question["category"] + "] " + $question["question"])
+        m.say("[" + $question["Category"] + "] " + $question["Question"])
       else
         m.say("No quiz has been started!")
       end
@@ -76,7 +77,7 @@ m.on_message { |time,nick,text|
       end
     # look for anything if a question was asked
     elsif $question
-      if text.casecmp($question["answer"]) == 0
+      if text.casecmp($question["Answer"]) == 0
         m.say("Correct answer #{nick}!")
         if $scoreboard.has_key?(nick)
           $scoreboard[nick] = $scoreboard[nick] + 1
@@ -86,8 +87,8 @@ m.on_message { |time,nick,text|
         if $questioncount > 0
           $question = questionpool.sample
           $questioncount = $questioncount-1
-          m.say("[" + $question["category"] + "] " + $question["question"])
-          #puts ($question["answer"])
+          m.say("[" + $question["Category"] + "] " + $question["Question"])
+          #puts ($question["Answer"])
         else
           $question = nil
           m.say("(.•ˆ•… Scoreboard …•ˆ•.)")
