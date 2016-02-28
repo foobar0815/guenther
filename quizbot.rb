@@ -2,13 +2,11 @@
 
 require 'xmpp4r'
 require 'xmpp4r/muc/helper/simplemucclient'
-require 'net/http'
-require 'json'
 require 'yaml'
 
 if File.exist?('config.yml')
   config = YAML.load_file("config.yml")
-  if !config["jid"] || !config["secret"] || !config["room"]
+  if !config["jid"] || !config["password"] || !config["room"]
     puts "Config file missing an option"
     exit
   end
