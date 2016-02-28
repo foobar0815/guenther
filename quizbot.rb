@@ -4,10 +4,22 @@ require 'xmpp4r'
 require 'xmpp4r/muc/helper/simplemucclient'
 require 'net/http'
 require 'json'
+require 'yaml'
 
-if ARGV.size != 3
+if File.exist?('config.yml')
+  config = YAML.load_file("config.yml")
+  if !config["jid"] || !config["secret"] || !config["room"]
+    puts "Config file missing an option"
+    exit
+  end
+elsif ARGV.size != 3
   puts "Usage: #{$0} <jid> <password> <room@conference/nick>"
   exit
+else
+  config = Hash.new
+  config["jid"] = ARGV[0]
+  config["password"] = ARGV[1]
+  config["room"] = ARGV[2]
 end
 
 # generate questionpool from MoxQuizz quizdata files
@@ -29,15 +41,15 @@ Dir.glob('quizdata/*.utf8') do |item|
         end
         linesplit = line.split(": ", 2)
         $hash[linesplit.first.strip] = linesplit.last.strip
-      end  
+      end
     end
   end
 end
 
 #Jabber::debug = true
-cl = Jabber::Client.new(Jabber::JID.new(ARGV[0]))
+cl = Jabber::Client.new(Jabber::JID.new(config["jid"]))
 cl.connect
-cl.auth(ARGV[1])
+cl.auth(config["password"])
 
 # For waking up...
 mainthread = Thread.current
@@ -106,7 +118,7 @@ m.on_message { |time,nick,text|
   end
 }
 
-m.join(ARGV[2])
+m.join(config["room"])
 
 # Wait for being waken up by m.on_message
 Thread.stop
