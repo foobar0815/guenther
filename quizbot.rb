@@ -65,8 +65,19 @@ m.on_message { |time,nick,text|
       if $1.downcase == m.jid.resource.downcase
         if $2
           $question = questionpool.sample
-          $questioncount = $2.to_i - 1
+          $question["lifetime"] = Time.now + 60
           m.say($question["Question"])
+          Thread.new do
+            while $question
+              while Time.now < $question["lifetime"]
+                sleep 1
+              end
+              $question = questionpool.sample
+              $question["lifetime"] = Time.now + 60
+              m.say($question["Question"])
+            end
+          end
+          $questioncount = $2.to_i - 1
           $scoreboard = Hash.new
         end
       end
@@ -74,6 +85,7 @@ m.on_message { |time,nick,text|
     elsif text.strip =~ /^(.+?): next$/
       if $question
         $question = questionpool.sample
+        $question["lifetime"] = Time.now + 60
         m.say($question["Question"])
       else
         m.say("No quiz has been started!")
@@ -102,8 +114,9 @@ m.on_message { |time,nick,text|
         end
         if $questioncount > 0
           $question = questionpool.sample
-          $questioncount = $questioncount-1
+          $question["lifetime"] = Time.now + 60
           m.say($question["Question"])
+          $questioncount = $questioncount-1
         else
           $question = nil
           m.say("(.•ˆ•… Scoreboard …•ˆ•.)")
