@@ -57,7 +57,7 @@ m = Jabber::MUC::SimpleMUCClient.new(cl)
 
 # SimpleMUCClient callback-blocks
 
-m.on_message { |time,nick,text|
+m.on_message do |time,nick,text|
   # Avoid reacting on messaged delivered as room history
   unless time
     # Bot: startquiz
@@ -127,7 +127,7 @@ m.on_message { |time,nick,text|
       end
     end
   end
-}
+end
 
 m.join(config["room"])
 
