@@ -56,6 +56,33 @@ class Guenther
     end
   end
 
+  def handle_answer(nick, text)
+    if @current_question["Regexp"]
+      if /#{@current_question["Regexp"]}/ =~ text
+        answered = true
+      end
+    elsif text.casecmp(@current_question["Answer"]) == 0
+      answered = true
+    end
+
+    if answered
+      @muc_client.say("Correct answer #{nick}!")
+      @scoreboard[nick] += 1
+      if @current_question_count > 0
+        @current_question = @questions.sample
+        @current_question["lifetime"] = Time.now + 60
+        @muc_client.say(@current_question["Question"])
+        @current_question_count -= 1
+      else
+        @current_question = nil
+        @muc_client.say("(.•ˆ•… Scoreboard …•ˆ•.)")
+        @scoreboard.each do |key, val|
+          @muc_client.say("#{key}: #{val}")
+        end
+      end
+    end
+  end
+
   def run
     # Jabber::debug = true
 
@@ -70,6 +97,10 @@ class Guenther
     @muc_client.on_message do |time, nick, text|
       # Avoid reacting on messages delivered as room history
       next if time
+
+      if @current_question
+        handle_answer nick, text
+      end
 
       # Bot: startquiz
       if text.strip =~ /^(.+?): startquiz ([0-9]|[0-9]{2})$/
@@ -106,31 +137,6 @@ class Guenther
         if $1.downcase == @muc_client.jid.resource.downcase
           @muc_client.exit "Exiting on behalf of #{nick}"
           mainthread.wakeup
-        end
-      # look for anything if a question was asked
-      elsif @current_question
-        if @current_question["Regexp"]
-          if /#{@current_question["Regexp"]}/ =~ text
-            answered = true
-          end
-        elsif text.casecmp(@current_question["Answer"]) == 0
-          answered = true
-        end
-        if answered == true
-          @muc_client.say("Correct answer #{nick}!")
-          @scoreboard[nick] += 1
-          if @current_question_count > 0
-            @current_question = @questions.sample
-            @current_question["lifetime"] = Time.now + 60
-            @muc_client.say(@current_question["Question"])
-            @current_question_count -= 1
-          else
-            @current_question = nil
-            @muc_client.say("(.•ˆ•… Scoreboard …•ˆ•.)")
-            @scoreboard.each do |key, val|
-              @muc_client.say("#{key}: #{val}")
-            end
-          end
         end
       end
     end
