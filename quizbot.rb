@@ -4,21 +4,35 @@ require 'xmpp4r'
 require 'xmpp4r/muc/helper/simplemucclient'
 require 'yaml'
 
-if File.exist?('config.yml')
-  config = YAML.load_file("config.yml")
-  if !config["jid"] || !config["password"] || !config["room"]
-    puts "Config file missing an option"
-    exit
+class Guenther
+  CONFIG_FILE = 'guenther.yaml'
+
+  def try_load_config
+    return false unless File.readable? CONFIG_FILE
+    config = YAML.load_file(CONFIG_FILE)
+    # config will be false if the file was empty
+    return false unless config
+
+    @jid = config['jid']
+    @password = config['password']
+    @room = config['room']
+    true
   end
-elsif ARGV.size != 3
-  puts "Usage: #{$0} <jid> <password> <room@conference/nick>"
-  exit
-else
-  config = Hash.new
-  config["jid"] = ARGV[0]
-  config["password"] = ARGV[1]
-  config["room"] = ARGV[2]
+
+  def initialize
+    return if try_load_config
+
+    if ARGV.size != 3
+      STDERR.puts "Usage: #{$0} <jid> <password> <room@conference.example.com/resource>"
+      exit 1
+    end
+    @jid = ARGV[0]
+    @password = ARGV[1]
+    @room = ARGV[2]
+  end
 end
+
+guenther = Guenther.new
 
 # generate questionpool from MoxQuizz quizdata files
 questionpool = []
@@ -45,9 +59,9 @@ Dir.glob('quizdata/*.utf8') do |item|
 end
 
 #Jabber::debug = true
-cl = Jabber::Client.new(Jabber::JID.new(config["jid"]))
+cl = Jabber::Client.new(Jabber::JID.new(guenther.jid))
 cl.connect
-cl.auth(config["password"])
+cl.auth(guenther.password)
 
 # For waking up...
 mainthread = Thread.current
@@ -129,7 +143,7 @@ m.on_message do |time,nick,text|
   end
 end
 
-m.join(config["room"])
+m.join(guenter.room)
 
 # Wait for being waken up by m.on_message
 Thread.stop
