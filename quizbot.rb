@@ -83,6 +83,10 @@ class Guenther
     end
   end
 
+  def talking_to_me?(text)
+    text.start_with? "#{@muc_client.jid.resource}:"
+  end
+
   def run
     # Jabber::debug = true
 
@@ -98,30 +102,32 @@ class Guenther
       # Avoid reacting on messages delivered as room history
       next if time
 
+      # look at every line if we have a question in flight
       if @current_question
         handle_answer nick, text
       end
 
+      # Nothing to do if the line is not addressed to me
+      next unless talking_to_me? text
+
       # Bot: startquiz
       if text.strip =~ /^(.+?): startquiz ([0-9]|[0-9]{2})$/
-        if $1.downcase == @muc_client.jid.resource.downcase
-          if $2
-            @current_question = @questions.sample
-            @current_question["lifetime"] = Time.now + 60
-            @muc_client.say(@current_question["Question"])
-            Thread.new do
-              while @current_question
-                while Time.now < @current_question["lifetime"]
-                  sleep 1
-                end
-                @current_question = @questions.sample
-                @current_question["lifetime"] = Time.now + 60
-                @muc_client.say(@current_question["Question"])
+        if $2
+          @current_question = @questions.sample
+          @current_question["lifetime"] = Time.now + 60
+          @muc_client.say(@current_question["Question"])
+          Thread.new do
+            while @current_question
+              while Time.now < @current_question["lifetime"]
+                sleep 1
               end
+              @current_question = @questions.sample
+              @current_question["lifetime"] = Time.now + 60
+              @muc_client.say(@current_question["Question"])
             end
-            @current_question_count = $2.to_i - 1
-            @scoreboard.clear
           end
+          @current_question_count = $2.to_i - 1
+          @scoreboard.clear
         end
       # Bot: next
       elsif text.strip =~ /^(.+?): next$/
@@ -134,10 +140,8 @@ class Guenther
         end
       # Bot: exit
       elsif text.strip =~ /^(.+?): exit$/
-        if $1.downcase == @muc_client.jid.resource.downcase
-          @muc_client.exit "Exiting on behalf of #{nick}"
-          mainthread.wakeup
-        end
+        @muc_client.exit "Exiting on behalf of #{nick}"
+        mainthread.wakeup
       end
     end
 
