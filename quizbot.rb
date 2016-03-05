@@ -20,6 +20,9 @@ class Guenther
   end
 
   def initialize
+    @questions = []
+    @current_question = nil
+
     return if try_load_config
 
     if ARGV.size != 3
@@ -32,16 +35,15 @@ class Guenther
   end
 
   def load_questions
-    @questionpool = []
-
     cur_question = nil
+
     Dir.glob('quizdata/*.utf8') do |filename|
       File.open(filename).each_line do |line|
         next if line.start_with?('#')
 
         if line == "\n"
           if cur_question
-            @questionpool.push(cur_question)
+            @questions.push(cur_question)
             cur_question = nil
           end
         else
@@ -72,29 +74,29 @@ class Guenther
       if text.strip =~ /^(.+?): startquiz ([0-9]|[0-9]{2})$/
         if $1.downcase == @muc_client.jid.resource.downcase
           if $2
-            $question = @questionpool.sample
-            $question["lifetime"] = Time.now + 60
-            @muc_client.say($question["Question"])
+            @current_question = @questions.sample
+            @current_question["lifetime"] = Time.now + 60
+            @muc_client.say(@current_question["Question"])
             Thread.new do
-              while $question
-                while Time.now < $question["lifetime"]
+              while @current_question
+                while Time.now < @current_question["lifetime"]
                   sleep 1
                 end
-                $question = @questionpool.sample
-                $question["lifetime"] = Time.now + 60
-                @muc_client.say($question["Question"])
+                @current_question = @questions.sample
+                @current_question["lifetime"] = Time.now + 60
+                @muc_client.say(@current_question["Question"])
               end
             end
-            $questioncount = $2.to_i - 1
+            @current_question_count = $2.to_i - 1
             $scoreboard = Hash.new
           end
         end
       # Bot: next
       elsif text.strip =~ /^(.+?): next$/
-        if $question
-          $question = @questionpool.sample
-          $question["lifetime"] = Time.now + 60
-          @muc_client.say($question["Question"])
+        if @current_question
+          @current_question = @questions.sample
+          @current_question["lifetime"] = Time.now + 60
+          @muc_client.say(@current_question["Question"])
         else
           @muc_client.say("No quiz has been started!")
         end
@@ -105,12 +107,12 @@ class Guenther
           mainthread.wakeup
         end
       # look for anything if a question was asked
-      elsif $question
-        if $question["Regexp"]
-          if /#{$question["Regexp"]}/ =~ text
+      elsif @current_question
+        if @current_question["Regexp"]
+          if /#{@current_question["Regexp"]}/ =~ text
             answered = true
           end
-        elsif text.casecmp($question["Answer"]) == 0
+        elsif text.casecmp(@current_question["Answer"]) == 0
           answered = true
         end
         if answered == true
@@ -120,13 +122,13 @@ class Guenther
           else
             $scoreboard[nick] = 1
           end
-          if $questioncount > 0
-            $question = guenther.questionpool.sample
-            $question["lifetime"] = Time.now + 60
-            @muc_client.say($question["Question"])
-            $questioncount = $questioncount-1
+          if @current_question_count > 0
+            @current_question = @questions.sample
+            @current_question["lifetime"] = Time.now + 60
+            @muc_client.say(@current_question["Question"])
+            @current_question_count -= 1
           else
-            $question = nil
+            @current_question = nil
             @muc_client.say("(.•ˆ•… Scoreboard …•ˆ•.)")
             $scoreboard.each do |key, val|
               @muc_client.say("#{key}: #{val}")
