@@ -143,6 +143,8 @@ class Guenther
   end
 end
 
-guenther = Guenther.new
-guenther.load_questions
-guenther.run
+if __FILE__ == $0
+  guenther = Guenther.new
+  guenther.load_questions
+  guenther.run
+end
