@@ -137,7 +137,6 @@ class Guenther
 
     Thread.stop
 
-    @muc_client.exit
     @client.close
   end
 end
