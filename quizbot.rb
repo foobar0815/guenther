@@ -22,6 +22,7 @@ class Guenther
   def initialize
     @questions = []
     @current_question = nil
+    @scoreboard = Hash.new(0)
 
     return if try_load_config
 
@@ -88,7 +89,7 @@ class Guenther
               end
             end
             @current_question_count = $2.to_i - 1
-            $scoreboard = Hash.new
+            @scoreboard.clear
           end
         end
       # Bot: next
@@ -117,11 +118,7 @@ class Guenther
         end
         if answered == true
           @muc_client.say("Correct answer #{nick}!")
-          if $scoreboard.has_key?(nick)
-            $scoreboard[nick] = $scoreboard[nick] + 1
-          else
-            $scoreboard[nick] = 1
-          end
+          @scoreboard[nick] += 1
           if @current_question_count > 0
             @current_question = @questions.sample
             @current_question["lifetime"] = Time.now + 60
@@ -130,7 +127,7 @@ class Guenther
           else
             @current_question = nil
             @muc_client.say("(.•ˆ•… Scoreboard …•ˆ•.)")
-            $scoreboard.each do |key, val|
+            @scoreboard.each do |key, val|
               @muc_client.say("#{key}: #{val}")
             end
           end
