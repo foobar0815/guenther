@@ -7,6 +7,8 @@ require 'yaml'
 class Guenther
   CONFIG_FILE = 'guenther.yaml'
 
+  attr_accessor :jid, :password, :room, :questionpool
+
   def try_load_config
     return false unless File.readable? CONFIG_FILE
     config = YAML.load_file(CONFIG_FILE)
@@ -23,40 +25,39 @@ class Guenther
     return if try_load_config
 
     if ARGV.size != 3
-      STDERR.puts "Usage: #{$0} <jid> <password> <room@conference.example.com/resource>"
+      STDERR.puts "Usage: #{$0} <jid> <password> <room@conference.example.com/nick>"
       exit 1
     end
     @jid = ARGV[0]
     @password = ARGV[1]
     @room = ARGV[2]
   end
-end
 
-guenther = Guenther.new
+  def load_questions
+    @questionpool = []
 
-# generate questionpool from MoxQuizz quizdata files
-questionpool = []
+    cur_question = nil
+    Dir.glob('quizdata/*.utf8') do |filename|
+      File.open(filename).each_line do |line|
+        next if line.start_with?('#')
 
-# files need to be converted to utf-8 first
-# e.g. iconv -f ISO-8859-15 -t UTF-8
-Dir.glob('quizdata/*.utf8') do |item|
-  File.open( item ).each do |line|
-    if not line.start_with?("#")
-      if line == "\n"
-        if $hash
-          questionpool.push($hash)
-          $hash = nil
+        if line == "\n"
+          if cur_question
+            @questionpool.push(cur_question)
+            cur_question = nil
+          end
+        else
+          cur_question ||= {}
+          linesplit = line.split(": ", 2)
+          cur_question[linesplit.first.strip] = linesplit.last.strip
         end
-      else
-        if not $hash
-          $hash = Hash.new
-        end
-        linesplit = line.split(": ", 2)
-        $hash[linesplit.first.strip] = linesplit.last.strip
       end
     end
   end
 end
+
+guenther = Guenther.new
+guenther.load_questions
 
 #Jabber::debug = true
 cl = Jabber::Client.new(Jabber::JID.new(guenther.jid))
@@ -78,7 +79,7 @@ m.on_message do |time,nick,text|
     if text.strip =~ /^(.+?): startquiz ([0-9]|[0-9]{2})$/
       if $1.downcase == m.jid.resource.downcase
         if $2
-          $question = questionpool.sample
+          $question = guenther.questionpool.sample
           $question["lifetime"] = Time.now + 60
           m.say($question["Question"])
           Thread.new do
@@ -86,7 +87,7 @@ m.on_message do |time,nick,text|
               while Time.now < $question["lifetime"]
                 sleep 1
               end
-              $question = questionpool.sample
+              $question = guenther.questionpool.sample
               $question["lifetime"] = Time.now + 60
               m.say($question["Question"])
             end
@@ -98,7 +99,7 @@ m.on_message do |time,nick,text|
     # Bot: next
     elsif text.strip =~ /^(.+?): next$/
       if $question
-        $question = questionpool.sample
+        $question = guenther.questionpool.sample
         $question["lifetime"] = Time.now + 60
         m.say($question["Question"])
       else
@@ -127,7 +128,7 @@ m.on_message do |time,nick,text|
           $scoreboard[nick] = 1
         end
         if $questioncount > 0
-          $question = questionpool.sample
+          $question = guenther.questionpool.sample
           $question["lifetime"] = Time.now + 60
           m.say($question["Question"])
           $questioncount = $questioncount-1
@@ -143,7 +144,7 @@ m.on_message do |time,nick,text|
   end
 end
 
-m.join(guenter.room)
+m.join(guenther.room)
 
 # Wait for being waken up by m.on_message
 Thread.stop
