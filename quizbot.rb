@@ -7,8 +7,6 @@ require 'yaml'
 class Guenther
   CONFIG_FILE = 'guenther.yaml'
 
-  attr_accessor :jid, :password, :room, :questionpool
-
   def try_load_config
     return false unless File.readable? CONFIG_FILE
     config = YAML.load_file(CONFIG_FILE)
@@ -54,99 +52,97 @@ class Guenther
       end
     end
   end
-end
 
-guenther = Guenther.new
-guenther.load_questions
+  def run
+    # Jabber::debug = true
 
-#Jabber::debug = true
-cl = Jabber::Client.new(Jabber::JID.new(guenther.jid))
-cl.connect
-cl.auth(guenther.password)
+    @client = Jabber::Client.new(Jabber::JID.new(@jid))
+    @client.connect
+    @client.auth(@password)
+    @muc_client = Jabber::MUC::SimpleMUCClient.new(@client)
+    @muc_client.join(@room)
 
-# For waking up...
-mainthread = Thread.current
+    mainthread = Thread.current
 
-# This is the SimpleMUCClient helper!
-m = Jabber::MUC::SimpleMUCClient.new(cl)
+    @muc_client.on_message do |time, nick, text|
+      # Avoid reacting on messages delivered as room history
+      next if time
 
-# SimpleMUCClient callback-blocks
-
-m.on_message do |time,nick,text|
-  # Avoid reacting on messaged delivered as room history
-  unless time
-    # Bot: startquiz
-    if text.strip =~ /^(.+?): startquiz ([0-9]|[0-9]{2})$/
-      if $1.downcase == m.jid.resource.downcase
-        if $2
-          $question = guenther.questionpool.sample
-          $question["lifetime"] = Time.now + 60
-          m.say($question["Question"])
-          Thread.new do
-            while $question
-              while Time.now < $question["lifetime"]
-                sleep 1
+      # Bot: startquiz
+      if text.strip =~ /^(.+?): startquiz ([0-9]|[0-9]{2})$/
+        if $1.downcase == @muc_client.jid.resource.downcase
+          if $2
+            $question = @questionpool.sample
+            $question["lifetime"] = Time.now + 60
+            @muc_client.say($question["Question"])
+            Thread.new do
+              while $question
+                while Time.now < $question["lifetime"]
+                  sleep 1
+                end
+                $question = @questionpool.sample
+                $question["lifetime"] = Time.now + 60
+                @muc_client.say($question["Question"])
               end
-              $question = guenther.questionpool.sample
-              $question["lifetime"] = Time.now + 60
-              m.say($question["Question"])
             end
+            $questioncount = $2.to_i - 1
+            $scoreboard = Hash.new
           end
-          $questioncount = $2.to_i - 1
-          $scoreboard = Hash.new
         end
-      end
-    # Bot: next
-    elsif text.strip =~ /^(.+?): next$/
-      if $question
-        $question = guenther.questionpool.sample
-        $question["lifetime"] = Time.now + 60
-        m.say($question["Question"])
-      else
-        m.say("No quiz has been started!")
-      end
-    # Bot: exit
-    elsif text.strip =~ /^(.+?): exit$/
-      if $1.downcase == m.jid.resource.downcase
-        m.exit "Exiting on behalf of #{nick}"
-        mainthread.wakeup
-      end
-    # look for anything if a question was asked
-    elsif $question
-      if $question["Regexp"]
-        if /#{$question["Regexp"]}/ =~ text
+      # Bot: next
+      elsif text.strip =~ /^(.+?): next$/
+        if $question
+          $question = @questionpool.sample
+          $question["lifetime"] = Time.now + 60
+          @muc_client.say($question["Question"])
+        else
+          @muc_client.say("No quiz has been started!")
+        end
+      # Bot: exit
+      elsif text.strip =~ /^(.+?): exit$/
+        if $1.downcase == @muc_client.jid.resource.downcase
+          @muc_client.exit "Exiting on behalf of #{nick}"
+          mainthread.wakeup
+        end
+      # look for anything if a question was asked
+      elsif $question
+        if $question["Regexp"]
+          if /#{$question["Regexp"]}/ =~ text
+            answered = true
+          end
+        elsif text.casecmp($question["Answer"]) == 0
           answered = true
         end
-      elsif text.casecmp($question["Answer"]) == 0
-        answered = true
-      end
-      if answered == true
-        m.say("Correct answer #{nick}!")
-        if $scoreboard.has_key?(nick)
-          $scoreboard[nick] = $scoreboard[nick] + 1
-        else
-          $scoreboard[nick] = 1
-        end
-        if $questioncount > 0
-          $question = guenther.questionpool.sample
-          $question["lifetime"] = Time.now + 60
-          m.say($question["Question"])
-          $questioncount = $questioncount-1
-        else
-          $question = nil
-          m.say("(.•ˆ•… Scoreboard …•ˆ•.)")
-          $scoreboard.each do |key, val|
-            m.say("#{key}: #{val}")
+        if answered == true
+          @muc_client.say("Correct answer #{nick}!")
+          if $scoreboard.has_key?(nick)
+            $scoreboard[nick] = $scoreboard[nick] + 1
+          else
+            $scoreboard[nick] = 1
+          end
+          if $questioncount > 0
+            $question = guenther.questionpool.sample
+            $question["lifetime"] = Time.now + 60
+            @muc_client.say($question["Question"])
+            $questioncount = $questioncount-1
+          else
+            $question = nil
+            @muc_client.say("(.•ˆ•… Scoreboard …•ˆ•.)")
+            $scoreboard.each do |key, val|
+              @muc_client.say("#{key}: #{val}")
+            end
           end
         end
       end
     end
+
+    Thread.stop
+
+    @muc_client.exit
+    @client.close
   end
 end
 
-m.join(guenther.room)
-
-# Wait for being waken up by m.on_message
-Thread.stop
-
-cl.close
+guenther = Guenther.new
+guenther.load_questions
+guenther.run
