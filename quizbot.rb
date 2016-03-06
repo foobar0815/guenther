@@ -73,9 +73,10 @@ EOT
   end
 
   def handle_answer(nick, text)
-    answered = if @current_question['Regexp']
+    regex = @current_question['Regexp']
+    answered = if regex
                  # Compare answer to the regex if we have one
-                 /#{@current_question["Regexp"]}/ =~ text
+                 /#{regex}/ =~ text
                else
                  text.casecmp(@current_question['Answer']) == 0
                end
