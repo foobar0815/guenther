@@ -83,12 +83,19 @@ class Guenther
     end
   end
 
+  def me
+    @muc_client.jid.resource
+  end
   def talking_to_me?(text)
-    text.start_with? "#{@muc_client.jid.resource}:"
+    text.start_with? "#{me}:"
+  end
+
+  def extract_command(text)
+    text.match(/^#{me}: (\S+) ?(.*)?/)[1..2]
   end
 
   def run
-    # Jabber::debug = true
+    Jabber::debug = true
 
     @client = Jabber::Client.new(Jabber::JID.new(@jid))
     @client.connect
@@ -110,27 +117,30 @@ class Guenther
       # Nothing to do if the line is not addressed to me
       next unless talking_to_me? text
 
+      command, parameter = extract_command(text)
+
       # Bot: startquiz
-      if text.strip =~ /^(.+?): startquiz ([0-9]|[0-9]{2})$/
-        if $2
-          @current_question = @questions.sample
-          @current_question["lifetime"] = Time.now + 60
-          @muc_client.say(@current_question["Question"])
-          Thread.new do
-            while @current_question
-              while Time.now < @current_question["lifetime"]
-                sleep 1
-              end
-              @current_question = @questions.sample
-              @current_question["lifetime"] = Time.now + 60
-              @muc_client.say(@current_question["Question"])
+      case command
+      when "startquiz"
+        # Handle not well formed parameter
+        next if parameter.to_i == 0
+
+        @current_question = @questions.sample
+        @current_question["lifetime"] = Time.now + 60
+        @muc_client.say(@current_question["Question"])
+        Thread.new do
+          while @current_question
+            while Time.now < @current_question["lifetime"]
+              sleep 1
             end
+            @current_question = @questions.sample
+            @current_question["lifetime"] = Time.now + 60
+            @muc_client.say(@current_question["Question"])
           end
-          @current_question_count = $2.to_i - 1
-          @scoreboard.clear
         end
-      # Bot: next
-      elsif text.strip =~ /^(.+?): next$/
+        @current_question_count = parameter.to_i - 1
+        @scoreboard.clear
+      when "next"
         if @current_question
           @current_question = @questions.sample
           @current_question["lifetime"] = Time.now + 60
@@ -138,8 +148,7 @@ class Guenther
         else
           @muc_client.say("No quiz has been started!")
         end
-      # Bot: exit
-      elsif text.strip =~ /^(.+?): exit$/
+      when "exit"
         @muc_client.exit "Exiting on behalf of #{nick}"
         mainthread.wakeup
       end
