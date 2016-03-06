@@ -104,7 +104,14 @@ class Guenther
     text.match(/^#{me}: (\S+) ?(.*)?/)[1..2]
   end
 
-  def start_quiz(number_of_questions)
+  def start_quiz(parameter)
+    number_of_questions = parameter.to_i
+    # Handle not well formed parameter
+    if number_of_questions == 0
+      say "Invalid number of questions: #{parameter}"
+      return
+    end
+
     @scoreboard.clear
     @remaining_questions = number_of_questions
     ask_question
@@ -166,14 +173,7 @@ class Guenther
 
       case command
       when "startquiz"
-        number_of_questions = parameter.to_i
-        # Handle not well formed parameter
-        if number_of_questions == 0
-          say "Invalid number of questions: #{parameter}"
-          next
-        end
-
-        start_quiz number_of_questions
+        start_quiz parameter
       when "next"
         handle_next
       when "scoreboard"
