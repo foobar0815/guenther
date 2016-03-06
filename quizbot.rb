@@ -22,6 +22,7 @@ class Guenther
   def initialize
     @questions = []
     @current_question = nil
+    @remaining_questions = 0
     @scoreboard = Hash.new(0)
 
     return if try_load_config
@@ -60,7 +61,7 @@ class Guenther
     @current_question = @questions.sample
     @current_question["lifetime"] = Time.now + 60
     say @current_question["Question"]
-    @current_question_count -= 1
+    @remaining_questions -= 1
   end
 
   def handle_answer(nick, text)
@@ -75,21 +76,26 @@ class Guenther
     if answered
       say "Correct answer #{nick}!"
       @scoreboard[nick] += 1
-      if @current_question_count > 0
+      if @remaining_questions > 0
         ask_question
       else
         @current_question = nil
-        say "(.•ˆ•… Scoreboard …•ˆ•.)"
-        @scoreboard.each do |key, val|
-          say "#{key}: #{val}"
-        end
+        say_scoreboard
       end
+    end
+  end
+
+  def say_scoreboard
+    say "(.•ˆ•… Scoreboard …•ˆ•.)"
+    @scoreboard.each do |nick, score|
+      say "#{nick}: #{score}"
     end
   end
 
   def me
     @muc_client.jid.resource
   end
+
   def talking_to_me?(text)
     text.start_with? "#{me}:"
   end
@@ -100,6 +106,7 @@ class Guenther
 
   def start_quiz(number_of_questions)
     @scoreboard.clear
+    @remaining_questions = number_of_questions
     ask_question
 
     # Thread to handle question timeouts
@@ -153,10 +160,15 @@ class Guenther
 
         start_quiz number_of_questions
       when "next"
+        if @remaining_questions < 1
+          say "No more questions"
+          say_scoreboard
+          @current_question = nil
+          next
+        end
+
         if @current_question
-          @current_question = @questions.sample
-          @current_question["lifetime"] = Time.now + 60
-          say @current_question["Question"]
+          ask_question
         else
           say "No quiz has been started!"
         end
