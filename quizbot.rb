@@ -125,15 +125,14 @@ class Guenther
   end
 
   def handle_next
-    if @remaining_questions < 1
-      say "No more questions"
-      say_scoreboard
-      @current_question = nil
-      return
-    end
-
     if @current_question
-      ask_question
+      if @remaining_questions < 1
+        @current_question = nil
+        say "No more questions"
+        say_scoreboard
+      else
+        ask_question
+      end
     else
       say "No quiz has been started!"
     end
