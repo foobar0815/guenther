@@ -5,7 +5,15 @@ require 'xmpp4r/muc/helper/simplemucclient'
 require 'yaml'
 
 class Guenther
-  CONFIG_FILE = 'guenther.yaml'
+  CONFIG_FILE = 'guenther.yaml'.freeze
+  HELP_TEXT = <<EOT.freeze
+Usage:
+  startquiz <number of questions>: start a quiz
+  next: move to the next question
+  scoreboard: show the last score board
+  exit: exit
+  help: show this help text
+EOT
 
   def try_load_config
     return false unless File.readable? CONFIG_FILE
@@ -28,7 +36,7 @@ class Guenther
     return if try_load_config
 
     if ARGV.size != 3
-      STDERR.puts "Usage: #{$0} <jid> <password> <room@conference.example.com/nick>"
+      STDERR.puts 'Usage: {$PROGRAM_NAME} <jid> <password> <room@conference.example.com/nick>'
       exit 1
     end
     @jid = ARGV[0]
@@ -50,7 +58,7 @@ class Guenther
           end
         else
           cur_question ||= {}
-          linesplit = line.split(": ", 2)
+          linesplit = line.split(': ', 2)
           cur_question[linesplit.first.strip] = linesplit.last.strip
         end
       end
@@ -59,19 +67,19 @@ class Guenther
 
   def ask_question
     @current_question = @questions.sample
-    @current_question["lifetime"] = Time.now + 60
-    say @current_question["Question"]
+    @current_question['lifetime'] = Time.now + 60
+    say @current_question['Question']
     @remaining_questions -= 1
   end
 
   def handle_answer(nick, text)
-    if @current_question["Regexp"]
-      if /#{@current_question["Regexp"]}/ =~ text
-        answered = true
-      end
-    elsif text.casecmp(@current_question["Answer"]) == 0
-      answered = true
-    end
+    regex = @current_question['Regexp']
+    answered = if regex
+                 # Compare answer to the regex if we have one
+                 /#{regex}/ =~ text
+               else
+                 text.casecmp(@current_question['Answer']) == 0
+               end
 
     if answered
       say "Correct answer #{nick}!"
@@ -104,7 +112,14 @@ class Guenther
     text.match(/^#{me}: (\S+) ?(.*)?/)[1..2]
   end
 
-  def start_quiz(number_of_questions)
+  def start_quiz(parameter)
+    number_of_questions = parameter.to_i
+    # Handle not well formed parameter
+    if number_of_questions == 0
+      say "Invalid number of questions: #{parameter}"
+      return
+    end
+
     @scoreboard.clear
     @remaining_questions = number_of_questions
     ask_question
@@ -112,9 +127,7 @@ class Guenther
     # Thread to handle question timeouts
     Thread.new do
       while @current_question
-        while Time.now < @current_question["lifetime"]
-          sleep 1
-        end
+        sleep 1 while Time.now < @current_question['lifetime']
         ask_question
       end
     end
@@ -128,18 +141,18 @@ class Guenther
     if @current_question
       if @remaining_questions < 1
         @current_question = nil
-        say "No more questions"
+        say 'No more questions'
         say_scoreboard
       else
         ask_question
       end
     else
-      say "No quiz has been started!"
+      say 'No quiz has been started!'
     end
   end
 
   def run
-    Jabber::debug = true
+    Jabber.debug = true
 
     jid = Jabber::JID.new(@jid)
     client = Jabber::Client.new(jid)
@@ -155,30 +168,27 @@ class Guenther
       next if time
 
       # look at every line if we have a question in flight
-      if @current_question
-        handle_answer nick, text
-      end
+      handle_answer nick, text if @current_question
 
-      # Nothing to do if the line is not addressed to me
+      # Nothing to do if the line is not addressed to us
       next unless talking_to_me? text
 
       command, parameter = extract_command(text)
 
       case command
-      when "startquiz"
-        number_of_questions = parameter.to_i
-        # Handle not well formed parameter
-        if number_of_questions == 0
-          say "Invalid number of questions: #{parameter}"
-          next
-        end
-
-        start_quiz number_of_questions
-      when "next"
+      when 'startquiz'
+        start_quiz parameter
+      when 'next'
         handle_next
-      when "exit"
+      when 'scoreboard'
+        say_scoreboard
+      when 'exit'
         @muc_client.exit "Exiting on behalf of #{nick}"
         mainthread.wakeup
+      when 'help'
+        say HELP_TEXT
+      else
+        say 'Unknown command, try help'
       end
     end
 
@@ -187,7 +197,7 @@ class Guenther
   end
 end
 
-if __FILE__ == $0
+if __FILE__ == $PROGRAM_NAME
   guenther = Guenther.new
   guenther.load_questions
   guenther.run
