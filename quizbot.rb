@@ -178,12 +178,12 @@ class Guenther
         handle_next
       when "exit"
         @muc_client.exit "Exiting on behalf of #{nick}"
-        client.close
         mainthread.wakeup
       end
     end
 
     Thread.stop
+    client.close
   end
 end
 
