@@ -7,8 +7,6 @@ require 'yaml'
 class Guenther
   CONFIG_FILE = 'guenther.yaml'
 
-  attr_accessor :jid, :password, :room, :questionpool
-
   def try_load_config
     return false unless File.readable? CONFIG_FILE
     config = YAML.load_file(CONFIG_FILE)
@@ -22,6 +20,10 @@ class Guenther
   end
 
   def initialize
+    @questions = []
+    @current_question = nil
+    @scoreboard = Hash.new(0)
+
     return if try_load_config
 
     if ARGV.size != 3
@@ -34,16 +36,15 @@ class Guenther
   end
 
   def load_questions
-    @questionpool = []
-
     cur_question = nil
+
     Dir.glob('quizdata/*.utf8') do |filename|
       File.open(filename).each_line do |line|
         next if line.start_with?('#')
 
         if line == "\n"
           if cur_question
-            @questionpool.push(cur_question)
+            @questions.push(cur_question)
             cur_question = nil
           end
         else
@@ -54,99 +55,104 @@ class Guenther
       end
     end
   end
-end
 
-guenther = Guenther.new
-guenther.load_questions
-
-#Jabber::debug = true
-cl = Jabber::Client.new(Jabber::JID.new(guenther.jid))
-cl.connect
-cl.auth(guenther.password)
-
-# For waking up...
-mainthread = Thread.current
-
-# This is the SimpleMUCClient helper!
-m = Jabber::MUC::SimpleMUCClient.new(cl)
-
-# SimpleMUCClient callback-blocks
-
-m.on_message do |time,nick,text|
-  # Avoid reacting on messaged delivered as room history
-  unless time
-    # Bot: startquiz
-    if text.strip =~ /^(.+?): startquiz ([0-9]|[0-9]{2})$/
-      if $1.downcase == m.jid.resource.downcase
-        if $2
-          $question = guenther.questionpool.sample
-          $question["lifetime"] = Time.now + 60
-          m.say($question["Question"])
-          Thread.new do
-            while $question
-              while Time.now < $question["lifetime"]
-                sleep 1
-              end
-              $question = guenther.questionpool.sample
-              $question["lifetime"] = Time.now + 60
-              m.say($question["Question"])
-            end
-          end
-          $questioncount = $2.to_i - 1
-          $scoreboard = Hash.new
-        end
-      end
-    # Bot: next
-    elsif text.strip =~ /^(.+?): next$/
-      if $question
-        $question = guenther.questionpool.sample
-        $question["lifetime"] = Time.now + 60
-        m.say($question["Question"])
-      else
-        m.say("No quiz has been started!")
-      end
-    # Bot: exit
-    elsif text.strip =~ /^(.+?): exit$/
-      if $1.downcase == m.jid.resource.downcase
-        m.exit "Exiting on behalf of #{nick}"
-        mainthread.wakeup
-      end
-    # look for anything if a question was asked
-    elsif $question
-      if $question["Regexp"]
-        if /#{$question["Regexp"]}/ =~ text
-          answered = true
-        end
-      elsif text.casecmp($question["Answer"]) == 0
+  def handle_answer(nick, text)
+    if @current_question["Regexp"]
+      if /#{@current_question["Regexp"]}/ =~ text
         answered = true
       end
-      if answered == true
-        m.say("Correct answer #{nick}!")
-        if $scoreboard.has_key?(nick)
-          $scoreboard[nick] = $scoreboard[nick] + 1
-        else
-          $scoreboard[nick] = 1
-        end
-        if $questioncount > 0
-          $question = guenther.questionpool.sample
-          $question["lifetime"] = Time.now + 60
-          m.say($question["Question"])
-          $questioncount = $questioncount-1
-        else
-          $question = nil
-          m.say("(.•ˆ•… Scoreboard …•ˆ•.)")
-          $scoreboard.each do |key, val|
-            m.say("#{key}: #{val}")
-          end
+    elsif text.casecmp(@current_question["Answer"]) == 0
+      answered = true
+    end
+
+    if answered
+      @muc_client.say("Correct answer #{nick}!")
+      @scoreboard[nick] += 1
+      if @current_question_count > 0
+        @current_question = @questions.sample
+        @current_question["lifetime"] = Time.now + 60
+        @muc_client.say(@current_question["Question"])
+        @current_question_count -= 1
+      else
+        @current_question = nil
+        @muc_client.say("(.•ˆ•… Scoreboard …•ˆ•.)")
+        @scoreboard.each do |key, val|
+          @muc_client.say("#{key}: #{val}")
         end
       end
     end
   end
+
+  def talking_to_me?(text)
+    text.start_with? "#{@muc_client.jid.resource}:"
+  end
+
+  def run
+    # Jabber::debug = true
+
+    @client = Jabber::Client.new(Jabber::JID.new(@jid))
+    @client.connect
+    @client.auth(@password)
+    @muc_client = Jabber::MUC::SimpleMUCClient.new(@client)
+    @muc_client.join(@room)
+
+    mainthread = Thread.current
+
+    @muc_client.on_message do |time, nick, text|
+      # Avoid reacting on messages delivered as room history
+      next if time
+
+      # look at every line if we have a question in flight
+      if @current_question
+        handle_answer nick, text
+      end
+
+      # Nothing to do if the line is not addressed to me
+      next unless talking_to_me? text
+
+      # Bot: startquiz
+      if text.strip =~ /^(.+?): startquiz ([0-9]|[0-9]{2})$/
+        if $2
+          @current_question = @questions.sample
+          @current_question["lifetime"] = Time.now + 60
+          @muc_client.say(@current_question["Question"])
+          Thread.new do
+            while @current_question
+              while Time.now < @current_question["lifetime"]
+                sleep 1
+              end
+              @current_question = @questions.sample
+              @current_question["lifetime"] = Time.now + 60
+              @muc_client.say(@current_question["Question"])
+            end
+          end
+          @current_question_count = $2.to_i - 1
+          @scoreboard.clear
+        end
+      # Bot: next
+      elsif text.strip =~ /^(.+?): next$/
+        if @current_question
+          @current_question = @questions.sample
+          @current_question["lifetime"] = Time.now + 60
+          @muc_client.say(@current_question["Question"])
+        else
+          @muc_client.say("No quiz has been started!")
+        end
+      # Bot: exit
+      elsif text.strip =~ /^(.+?): exit$/
+        @muc_client.exit "Exiting on behalf of #{nick}"
+        mainthread.wakeup
+      end
+    end
+
+    Thread.stop
+
+    @client.close
+  end
 end
 
-m.join(guenther.room)
-
-# Wait for being waken up by m.on_message
-Thread.stop
-
-cl.close
+if __FILE__ == $0
+  guenther = Guenther.new
+  guenther.load_questions
+  guenther.run
+end
