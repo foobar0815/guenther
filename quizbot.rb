@@ -6,6 +6,14 @@ require 'yaml'
 
 class Guenther
   CONFIG_FILE = 'guenther.yaml'
+  HELP_TEXT = <<EOT
+Usage:
+  startquiz <number of questions>: start a quiz
+  next: move to the next question
+  scoreboard: show the last score board
+  exit: exit
+  help: show this help text
+EOT
 
   def try_load_config
     return false unless File.readable? CONFIG_FILE
@@ -162,11 +170,9 @@ class Guenther
       next if time
 
       # look at every line if we have a question in flight
-      if @current_question
-        handle_answer nick, text
-      end
+      handle_answer nick, text if @current_question
 
-      # Nothing to do if the line is not addressed to me
+      # Nothing to do if the line is not addressed to us
       next unless talking_to_me? text
 
       command, parameter = extract_command(text)
@@ -181,6 +187,10 @@ class Guenther
       when "exit"
         @muc_client.exit "Exiting on behalf of #{nick}"
         mainthread.wakeup
+      when "help"
+        say HELP_TEXT
+      else
+        say "Unknown command, try help"
       end
     end
 
