@@ -127,10 +127,11 @@ class Guenther
   def run
     Jabber::debug = true
 
-    @client = Jabber::Client.new(Jabber::JID.new(@jid))
-    @client.connect
-    @client.auth(@password)
-    @muc_client = Jabber::MUC::SimpleMUCClient.new(@client)
+    jid = Jabber::JID.new(@jid)
+    client = Jabber::Client.new(jid)
+    client.connect
+    client.auth(@password)
+    @muc_client = Jabber::MUC::SimpleMUCClient.new(client)
     @muc_client.join(@room)
 
     mainthread = Thread.current
@@ -174,13 +175,12 @@ class Guenther
         end
       when "exit"
         @muc_client.exit "Exiting on behalf of #{nick}"
+        client.close
         mainthread.wakeup
       end
     end
 
     Thread.stop
-
-    @client.close
   end
 end
 
