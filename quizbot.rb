@@ -124,6 +124,21 @@ class Guenther
     @muc_client.say text
   end
 
+  def handle_next
+    if @remaining_questions < 1
+      say "No more questions"
+      say_scoreboard
+      @current_question = nil
+      return
+    end
+
+    if @current_question
+      ask_question
+    else
+      say "No quiz has been started!"
+    end
+  end
+
   def run
     Jabber::debug = true
 
@@ -161,18 +176,7 @@ class Guenther
 
         start_quiz number_of_questions
       when "next"
-        if @remaining_questions < 1
-          say "No more questions"
-          say_scoreboard
-          @current_question = nil
-          next
-        end
-
-        if @current_question
-          ask_question
-        else
-          say "No quiz has been started!"
-        end
+        handle_next
       when "exit"
         @muc_client.exit "Exiting on behalf of #{nick}"
         client.close
