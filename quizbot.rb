@@ -176,6 +176,8 @@ class Guenther
         start_quiz number_of_questions
       when "next"
         handle_next
+      when "scoreboard"
+        say_scoreboard
       when "exit"
         @muc_client.exit "Exiting on behalf of #{nick}"
         mainthread.wakeup
