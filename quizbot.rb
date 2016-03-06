@@ -66,18 +66,18 @@ class Guenther
     end
 
     if answered
-      @muc_client.say("Correct answer #{nick}!")
+      say "Correct answer #{nick}!"
       @scoreboard[nick] += 1
       if @current_question_count > 0
         @current_question = @questions.sample
         @current_question["lifetime"] = Time.now + 60
-        @muc_client.say(@current_question["Question"])
+        say @current_question["Question"]
         @current_question_count -= 1
       else
         @current_question = nil
-        @muc_client.say("(.•ˆ•… Scoreboard …•ˆ•.)")
+        say "(.•ˆ•… Scoreboard …•ˆ•.)"
         @scoreboard.each do |key, val|
-          @muc_client.say("#{key}: #{val}")
+          say "#{key}: #{val}"
         end
       end
     end
@@ -97,7 +97,7 @@ class Guenther
   def start_quiz(number_of_questions)
     @current_question = @questions.sample
     @current_question["lifetime"] = Time.now + 60
-    @muc_client.say(@current_question["Question"])
+    say @current_question["Question"]
     Thread.new do
       while @current_question
         while Time.now < @current_question["lifetime"]
@@ -105,11 +105,15 @@ class Guenther
         end
         @current_question = @questions.sample
         @current_question["lifetime"] = Time.now + 60
-        @muc_client.say(@current_question["Question"])
+        say @current_question["Question"]
       end
     end
     @current_question_count = number_of_questions - 1
     @scoreboard.clear
+  end
+
+  def say(text)
+    @muc_client.say text
   end
 
   def run
@@ -141,16 +145,19 @@ class Guenther
       when "startquiz"
         number_of_questions = parameter.to_i
         # Handle not well formed parameter
-        next if number_of_questions == 0
+        if number_of_questions == 0
+          say "Invalid number of questions: #{parameter}"
+          next
+        end
 
         start_quiz number_of_questions
       when "next"
         if @current_question
           @current_question = @questions.sample
           @current_question["lifetime"] = Time.now + 60
-          @muc_client.say(@current_question["Question"])
+          say @current_question["Question"]
         else
-          @muc_client.say("No quiz has been started!")
+          say "No quiz has been started!"
         end
       when "exit"
         @muc_client.exit "Exiting on behalf of #{nick}"
