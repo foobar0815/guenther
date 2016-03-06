@@ -152,8 +152,6 @@ EOT
   end
 
   def run
-    Jabber.debug = true
-
     jid = Jabber::JID.new(@jid)
     client = Jabber::Client.new(jid)
     client.connect
@@ -198,6 +196,9 @@ EOT
 end
 
 if __FILE__ == $PROGRAM_NAME
+  # Enable debug logging if -d is provided on the command line
+  Jabber.debug = true if ARGV.delete('-d')
+
   guenther = Guenther.new
   guenther.load_questions
   guenther.run
