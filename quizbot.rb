@@ -56,6 +56,13 @@ class Guenther
     end
   end
 
+  def ask_question
+    @current_question = @questions.sample
+    @current_question["lifetime"] = Time.now + 60
+    say @current_question["Question"]
+    @current_question_count -= 1
+  end
+
   def handle_answer(nick, text)
     if @current_question["Regexp"]
       if /#{@current_question["Regexp"]}/ =~ text
@@ -69,10 +76,7 @@ class Guenther
       say "Correct answer #{nick}!"
       @scoreboard[nick] += 1
       if @current_question_count > 0
-        @current_question = @questions.sample
-        @current_question["lifetime"] = Time.now + 60
-        say @current_question["Question"]
-        @current_question_count -= 1
+        ask_question
       else
         @current_question = nil
         say "(.•ˆ•… Scoreboard …•ˆ•.)"
@@ -95,21 +99,18 @@ class Guenther
   end
 
   def start_quiz(number_of_questions)
-    @current_question = @questions.sample
-    @current_question["lifetime"] = Time.now + 60
-    say @current_question["Question"]
+    @scoreboard.clear
+    ask_question
+
+    # Thread to handle question timeouts
     Thread.new do
       while @current_question
         while Time.now < @current_question["lifetime"]
           sleep 1
         end
-        @current_question = @questions.sample
-        @current_question["lifetime"] = Time.now + 60
-        say @current_question["Question"]
+        ask_question
       end
     end
-    @current_question_count = number_of_questions - 1
-    @scoreboard.clear
   end
 
   def say(text)
