@@ -94,6 +94,24 @@ class Guenther
     text.match(/^#{me}: (\S+) ?(.*)?/)[1..2]
   end
 
+  def start_quiz(number_of_questions)
+    @current_question = @questions.sample
+    @current_question["lifetime"] = Time.now + 60
+    @muc_client.say(@current_question["Question"])
+    Thread.new do
+      while @current_question
+        while Time.now < @current_question["lifetime"]
+          sleep 1
+        end
+        @current_question = @questions.sample
+        @current_question["lifetime"] = Time.now + 60
+        @muc_client.say(@current_question["Question"])
+      end
+    end
+    @current_question_count = number_of_questions - 1
+    @scoreboard.clear
+  end
+
   def run
     Jabber::debug = true
 
@@ -119,27 +137,13 @@ class Guenther
 
       command, parameter = extract_command(text)
 
-      # Bot: startquiz
       case command
       when "startquiz"
+        number_of_questions = parameter.to_i
         # Handle not well formed parameter
-        next if parameter.to_i == 0
+        next if number_of_questions == 0
 
-        @current_question = @questions.sample
-        @current_question["lifetime"] = Time.now + 60
-        @muc_client.say(@current_question["Question"])
-        Thread.new do
-          while @current_question
-            while Time.now < @current_question["lifetime"]
-              sleep 1
-            end
-            @current_question = @questions.sample
-            @current_question["lifetime"] = Time.now + 60
-            @muc_client.say(@current_question["Question"])
-          end
-        end
-        @current_question_count = parameter.to_i - 1
-        @scoreboard.clear
+        start_quiz number_of_questions
       when "next"
         if @current_question
           @current_question = @questions.sample
