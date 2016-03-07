@@ -69,7 +69,6 @@ EOT
     @current_question = @questions.sample
     @current_question['lifetime'] = Time.now + 60
     say @current_question['Question']
-    @remaining_questions -= 1
   end
 
   def handle_answer(nick, text)
@@ -84,6 +83,7 @@ EOT
     if answered
       say "Correct answer #{nick}!"
       @scoreboard[nick] += 1
+      @remaining_questions -= 1
       if @remaining_questions > 0
         ask_question
       else
