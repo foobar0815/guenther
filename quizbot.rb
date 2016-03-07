@@ -39,7 +39,7 @@ EOT
     return if try_load_config
 
     if ARGV.size != 3
-      STDERR.puts 'Usage: {$PROGRAM_NAME} <jid> <password> <room@conference.example.com/nick>'
+      STDERR.puts "Usage: #{$PROGRAM_NAME} <jid> <password> <room@conference.example.com/nick>"
       exit 1
     end
     @jid = ARGV[0]
