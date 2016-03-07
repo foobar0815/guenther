@@ -8,9 +8,11 @@ class Guenther
   CONFIG_FILE = 'guenther.yaml'.freeze
   HELP_TEXT = <<EOT.freeze
 Usage:
-  startquiz <number of questions>: start a quiz
+  startquiz <number of questions> [category]: start a quiz
+  stopquiz: stops the current quiz
   next: move to the next question
   scoreboard: show the last score board
+  categories: show all available categories
   exit: exit
   help: show this help text
 EOT
@@ -29,6 +31,7 @@ EOT
 
   def initialize
     @questions = []
+    @category = nil
     @current_question = nil
     @remaining_questions = 0
     @scoreboard = Hash.new(0)
@@ -66,7 +69,12 @@ EOT
   end
 
   def ask_question
-    @current_question = @questions.sample
+    questions = if @category
+                  @questions.select { |q| q['Category'] == @category }
+                else
+                  @qestions
+                end
+    @current_question = questions.sample
     @current_question['lifetime'] = Time.now + 60
     say @current_question['Question']
   end
@@ -87,10 +95,21 @@ EOT
       if @remaining_questions > 0
         ask_question
       else
-        @current_question = nil
-        say_scoreboard
+        stop_quiz
       end
     end
+  end
+
+  def handle_categories
+    count_per_category = Hash.new(0)
+    @questions.each do |q|
+      c = q['Category']
+      count_per_category[c] += 1 if c
+    end
+
+    # Sort the above hash by key, this turns it into an array of arrays.
+    # Map the outer array to an array of strings and join them with a comma.
+    say count_per_category.sort.map { |e| "#{e[0]} (#{e[1]})"}.join(', ')
   end
 
   def say_scoreboard
@@ -113,15 +132,26 @@ EOT
   end
 
   def start_quiz(parameter)
-    number_of_questions = parameter.to_i
+    matches = parameter.match(/(\d+)? ?(\S+)?/)
+    number_of_questions = matches[1].to_i
+    category = matches[2]
+
     # Handle not well formed parameter
     if number_of_questions == 0
-      say "Invalid number of questions: #{parameter}"
+      say "Invalid number of questions: #{matches[1]}"
       return
     end
+    @remaining_questions = number_of_questions
+
+    # category can be nil at this point, which is fine as we
+    # can have questions without a category as well
+    unless @questions.any? { |q| q['Category'] == category }
+      say "Could not find any questions in category #{category}"
+      return
+    end
+    @category = category
 
     @scoreboard.clear
-    @remaining_questions = number_of_questions
     ask_question
 
     # Thread to handle question timeouts
@@ -133,21 +163,25 @@ EOT
     end
   end
 
+  def stop_quiz
+    if @current_question
+      say_scoreboard
+      @current_question = nil
+      @category = nil
+    else
+      say 'No quiz is running'
+    end
+  end
+
   def say(text)
     @muc_client.say text
   end
 
   def handle_next
     if @current_question
-      if @remaining_questions < 1
-        @current_question = nil
-        say 'No more questions'
-        say_scoreboard
-      else
-        ask_question
-      end
+      ask_question
     else
-      say 'No quiz has been started!'
+      say 'No quiz is running'
     end
   end
 
@@ -176,10 +210,14 @@ EOT
       case command
       when 'startquiz'
         start_quiz parameter
+      when 'stopquiz'
+        stop_quiz
       when 'next'
         handle_next
       when 'scoreboard'
         say_scoreboard
+      when 'categories'
+        handle_categories
       when 'exit'
         @muc_client.exit "Exiting on behalf of #{nick}"
         mainthread.wakeup
