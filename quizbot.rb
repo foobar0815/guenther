@@ -76,7 +76,11 @@ EOT
                 end
     @current_question = questions.sample
     @current_question['lifetime'] = Time.now + 60
-    say @current_question['Question']
+    if @current_question['Category']
+      say '[' + @current_question['Category'] + '] ' + @current_question['Question']
+    else
+      say @current_question['Question']
+    end
   end
 
   def handle_answer(nick, text)
