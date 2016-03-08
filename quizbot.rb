@@ -72,7 +72,7 @@ EOT
     questions = if @category
                   @questions.select { |q| q['Category'] == @category }
                 else
-                  @qestions
+                  @questions
                 end
     @current_question = questions.sample
     @current_question['lifetime'] = Time.now + 60
