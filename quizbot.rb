@@ -3,6 +3,7 @@
 require 'xmpp4r'
 require 'xmpp4r/muc/helper/simplemucclient'
 require 'yaml'
+require 'optparse'
 
 class Guenther
   CONFIG_FILE = 'guenther.yaml'.freeze
@@ -38,13 +39,34 @@ EOT
 
     return if try_load_config
 
-    if ARGV.size != 3
-      STDERR.puts "Usage: #{$PROGRAM_NAME} <jid> <password> <room@conference.example.com/nick>"
-      exit 1
+    optparse = OptionParser.new do |opts|
+      opts.on('-j', '--jid JID', "Jabber identifier") do |j|
+        @jid = j
+      end
+
+      opts.on('-p', '--password PASSWORD', "Jabber password") do |p|
+        @password = p
+      end
+
+      opts.on('-r', '--room ROOM', "Jabber MUC room") do |r|
+        @room = r
+      end
+
+      opts.on("-h", "--help", "Prints this help") do
+        puts opts
+        exit
+      end
     end
-    @jid = ARGV[0]
-    @password = ARGV[1]
-    @room = ARGV[2]
+
+    begin
+      optparse.parse!
+      raise OptionParser::MissingArgument if @jid.nil?
+      raise OptionParser::MissingArgument if @password.nil?
+      raise OptionParser::MissingArgument if @room.nil?
+    rescue
+      puts optparse                                                          #
+      exit
+    end
   end
 
   def load_questions
