@@ -70,7 +70,7 @@ EOT
       raise OptionParser::MissingArgument unless @password
       raise OptionParser::MissingArgument unless @room
     rescue
-      puts optparse                                                          #
+      puts optparse
       exit 1
     end
   end
