@@ -77,7 +77,7 @@ EOT
     @current_question = questions.sample
     @current_question['lifetime'] = Time.now + 60
     if @current_question['Category']
-      say '[' + @current_question['Category'] + '] ' + @current_question['Question']
+      say "[#{@current_question['Category']}] #{@current_question['Question']}"
     else
       say @current_question['Question']
     end
