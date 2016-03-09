@@ -1,9 +1,9 @@
 #!/usr/bin/env ruby
 
+require 'optparse'
 require 'xmpp4r'
 require 'xmpp4r/muc/helper/simplemucclient'
 require 'yaml'
-require 'optparse'
 
 class Guenther
   CONFIG_FILE = 'guenther.yaml'.freeze
@@ -40,32 +40,38 @@ EOT
     return if try_load_config
 
     optparse = OptionParser.new do |opts|
-      opts.on('-j', '--jid JID', "Jabber identifier") do |j|
+      opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
+
+      opts.on('-j', '--jid JID', 'Jabber identifier') do |j|
         @jid = j
       end
 
-      opts.on('-p', '--password PASSWORD', "Jabber password") do |p|
+      opts.on('-p', '--password PASSWORD', 'Password') do |p|
         @password = p
       end
 
-      opts.on('-r', '--room ROOM', "Jabber MUC room") do |r|
+      opts.on('-r', '--room ROOM', 'Multi-user chat room (room@conference.example.com/nick)') do |r|
         @room = r
       end
 
-      opts.on("-h", "--help", "Prints this help") do
+      opts.on('-d', '--debug', 'Enables XMPP debug logging') do
+        Jabber.debug = true
+      end
+
+      opts.on('-h', '--help', 'Prints this help message') do
         puts opts
-        exit
+        exit 1
       end
     end
 
     begin
       optparse.parse!
-      raise OptionParser::MissingArgument if @jid.nil?
-      raise OptionParser::MissingArgument if @password.nil?
-      raise OptionParser::MissingArgument if @room.nil?
+      raise OptionParser::MissingArgument unless @jid
+      raise OptionParser::MissingArgument unless @password
+      raise OptionParser::MissingArgument unless @room
     rescue
       puts optparse                                                          #
-      exit
+      exit 1
     end
   end
 
@@ -260,9 +266,6 @@ EOT
 end
 
 if __FILE__ == $PROGRAM_NAME
-  # Enable debug logging if -d is provided on the command line
-  Jabber.debug = true if ARGV.delete('-d')
-
   guenther = Guenther.new
   guenther.load_questions
   guenther.run
