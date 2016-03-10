@@ -1,5 +1,6 @@
 #!/usr/bin/env ruby
 
+require 'optparse'
 require 'xmpp4r'
 require 'xmpp4r/muc/helper/simplemucclient'
 require 'yaml'
@@ -38,13 +39,40 @@ EOT
 
     return if try_load_config
 
-    if ARGV.size != 3
-      STDERR.puts "Usage: #{$PROGRAM_NAME} <jid> <password> <room@conference.example.com/nick>"
+    optparse = OptionParser.new do |opts|
+      opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
+
+      opts.on('-j', '--jid JID', 'Jabber identifier') do |j|
+        @jid = j
+      end
+
+      opts.on('-p', '--password PASSWORD', 'Password') do |p|
+        @password = p
+      end
+
+      opts.on('-r', '--room ROOM', 'Multi-user chat room (room@conference.example.com/nick)') do |r|
+        @room = r
+      end
+
+      opts.on('-d', '--debug', 'Enables XMPP debug logging') do
+        Jabber.debug = true
+      end
+
+      opts.on('-h', '--help', 'Prints this help message') do
+        puts opts
+        exit 1
+      end
+    end
+
+    begin
+      optparse.parse!
+      raise OptionParser::MissingArgument unless @jid
+      raise OptionParser::MissingArgument unless @password
+      raise OptionParser::MissingArgument unless @room
+    rescue
+      puts optparse
       exit 1
     end
-    @jid = ARGV[0]
-    @password = ARGV[1]
-    @room = ARGV[2]
   end
 
   def load_questions
@@ -238,9 +266,6 @@ EOT
 end
 
 if __FILE__ == $PROGRAM_NAME
-  # Enable debug logging if -d is provided on the command line
-  Jabber.debug = true if ARGV.delete('-d')
-
   guenther = Guenther.new
   guenther.load_questions
   guenther.run
