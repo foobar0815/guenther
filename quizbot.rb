@@ -190,6 +190,7 @@ EOT
     Thread.new do
       while @current_question
         sleep 1 while Time.now < @current_question['lifetime']
+        # XXX this crashes at the end of the quiz
         ask_question
       end
     end
