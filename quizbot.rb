@@ -239,8 +239,9 @@ EOT
       # Avoid reacting on messages delivered as room history
       next if time
 
-      # look at every line if we have a question in flight
-      handle_answer nick, text if @current_question
+      # Look at every line if we have a question in flight and we
+      # didn't say it
+      handle_answer nick, text if @current_question && nick != me
 
       # Nothing to do if the line is not addressed to us
       next unless talking_to_me? text
