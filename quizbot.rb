@@ -168,6 +168,11 @@ EOT
   end
 
   def start_quiz(parameter)
+    if @current_question
+      say 'Quiz already running'
+      return
+    end
+
     matches = parameter.match(/(\d+)? ?(\S+)?/)
     number_of_questions = matches[1].to_i
     category = matches[2]
