@@ -119,7 +119,7 @@ EOT
     regex = @current_question['Regexp']
     answered = if regex
                  # Compare answer to the regex if we have one
-                 /#{regex}/ =~ text
+                 /#{regex}/i =~ text
                else
                  text.casecmp(@current_question['Answer'].gsub('#', '')) == 0
                end
@@ -168,6 +168,11 @@ EOT
   end
 
   def start_quiz(parameter)
+    if @current_question
+      say 'Quiz already running'
+      return
+    end
+
     matches = parameter.match(/(\d+)? ?(\S+)?/)
     number_of_questions = matches[1].to_i
     category = matches[2]
@@ -239,8 +244,9 @@ EOT
       # Avoid reacting on messages delivered as room history
       next if time
 
-      # look at every line if we have a question in flight
-      handle_answer nick, text if @current_question
+      # Look at every line if we have a question in flight and we
+      # didn't say it
+      handle_answer nick, text if @current_question && nick != me
 
       # Nothing to do if the line is not addressed to us
       next unless talking_to_me? text
