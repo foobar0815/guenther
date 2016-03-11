@@ -117,7 +117,7 @@ EOT
                  # Compare answer to the regex if we have one
                  /#{regex}/ =~ text
                else
-                 text.casecmp(@current_question['Answer']) == 0
+                 text.casecmp(@current_question['Answer'].sub('#', '')) == 0
                end
 
     if answered
@@ -190,6 +190,7 @@ EOT
     Thread.new do
       while @current_question
         sleep 1 while Time.now < @current_question['lifetime']
+        # XXX this crashes at the end of the quiz
         ask_question
       end
     end
