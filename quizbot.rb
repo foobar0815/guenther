@@ -111,6 +111,10 @@ EOT
     end
   end
 
+  def answer_question
+    say @current_question['Answer']
+  end
+
   def handle_answer(nick, text)
     regex = @current_question['Regexp']
     answered = if regex
@@ -189,8 +193,10 @@ EOT
     # Thread to handle question timeouts
     Thread.new do
       while @current_question
+        # XXX this crashes at the end of the quiz because @current_question
+        # will be set to nil
         sleep 1 while Time.now < @current_question['lifetime']
-        # XXX this crashes at the end of the quiz
+        answer_question
         ask_question
       end
     end
@@ -212,6 +218,7 @@ EOT
 
   def handle_next
     if @current_question
+      answer_question
       ask_question
     else
       say 'No quiz is running'
