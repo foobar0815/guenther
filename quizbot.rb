@@ -119,7 +119,7 @@ EOT
     regex = @current_question['Regexp']
     answered = if regex
                  # Compare answer to the regex if we have one
-                 /#{regex}/ =~ text
+                 /#{regex}/i =~ text
                else
                  text.casecmp(@current_question['Answer'].gsub('#', '')) == 0
                end
