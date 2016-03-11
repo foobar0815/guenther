@@ -112,7 +112,7 @@ EOT
   end
 
   def answer_question
-    say @current_question['Answer']
+    say @current_question['Answer'].gsub('#', '')
   end
 
   def handle_answer(nick, text)
