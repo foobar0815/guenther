@@ -117,7 +117,7 @@ EOT
                  # Compare answer to the regex if we have one
                  /#{regex}/ =~ text
                else
-                 text.casecmp(@current_question['Answer']) == 0
+                 text.casecmp(@current_question['Answer'].sub('#', '')) == 0
                end
 
     if answered
