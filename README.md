@@ -11,5 +11,6 @@ This project is licensed under the terms of the MIT license.
 
 ## TODO
 
-* Show the answer
 * Remember already asked questions
+* Persistent configuration parameters
+* Answer command
