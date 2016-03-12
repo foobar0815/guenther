@@ -149,10 +149,11 @@ EOT
   end
 
   def say_scoreboard
-    say "(.•ˆ•… Scoreboard …•ˆ•.)"
+    scoreboard = "(.•ˆ•… Scoreboard …•ˆ•.)"
     @scoreboard.each do |nick, score|
-      say "#{nick}: #{score}"
+      scoreboard += "\n#{nick}: #{score}"
     end
+    say scoreboard
   end
 
   def me
