@@ -5,6 +5,7 @@ require 'xmpp4r'
 require 'xmpp4r/muc/helper/simplemucclient'
 require 'yaml'
 
+# The main class implementing the XMPP quiz bot
 class Guenther
   CONFIG_FILE = 'guenther.yaml'.freeze
   HELP_TEXT = <<EOT.freeze
@@ -50,7 +51,8 @@ EOT
         @password = p
       end
 
-      opts.on('-r', '--room ROOM', 'Multi-user chat room (room@conference.example.com/nick)') do |r|
+      opts.on('-r', '--room ROOM',
+              'Multi-user chat room (room@conference.example.com/nick)') do |r|
         @room = r
       end
 
@@ -112,7 +114,7 @@ EOT
   end
 
   def answer_question
-    say @current_question['Answer'].gsub('#', '')
+    say @current_question['Answer'].delete('#', '')
   end
 
   def handle_answer(nick, text)
@@ -121,7 +123,7 @@ EOT
                  # Compare answer to the regex if we have one
                  /#{regex}/i =~ text
                else
-                 text.casecmp(@current_question['Answer'].gsub('#', '')) == 0
+                 text.casecmp(@current_question['Answer'].delete('#', '')) == 0
                end
 
     if answered
@@ -145,7 +147,7 @@ EOT
 
     # Sort the above hash by key, this turns it into an array of arrays.
     # Map the outer array to an array of strings and join them with a comma.
-    say count_per_category.sort.map { |e| "#{e[0]} (#{e[1]})"}.join(', ')
+    say count_per_category.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
   end
 
   def say_scoreboard
