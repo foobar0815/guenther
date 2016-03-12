@@ -133,6 +133,8 @@ EOT
   end
 
   def answer_question
+    regex = @current_question['Regexp']
+    say regex if regex && @config.debug
     say @current_question['Answer'].delete('#')
   end
 
