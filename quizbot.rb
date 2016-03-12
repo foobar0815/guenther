@@ -114,7 +114,7 @@ EOT
   end
 
   def answer_question
-    say @current_question['Answer'].delete('#', '')
+    say @current_question['Answer'].delete('#')
   end
 
   def handle_answer(nick, text)
@@ -123,7 +123,7 @@ EOT
                  # Compare answer to the regex if we have one
                  /#{regex}/i =~ text
                else
-                 text.casecmp(@current_question['Answer'].delete('#', '')) == 0
+                 text.casecmp(@current_question['Answer'].delete('#')) == 0
                end
 
     if answered
