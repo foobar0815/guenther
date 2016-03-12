@@ -5,9 +5,26 @@ require 'xmpp4r'
 require 'xmpp4r/muc/helper/simplemucclient'
 require 'yaml'
 
+class Configuration
+  attr_reader :debug
+
+  def initialize
+    @debug = false
+  end
+
+  def to_s
+    inspect
+  end
+
+  def debug=(value)
+    @debug = value
+    Jabber.debug = @debug
+  end
+end
+
 # The main class implementing the XMPP quiz bot
 class Guenther
-  CONFIG_FILE = 'guenther.yaml'.freeze
+  CONFIG_FILE = 'guenther.yaml'.freeze # move to Configuration
   HELP_TEXT = <<EOT.freeze
 Usage:
   startquiz <number of questions> [category]: start a quiz
@@ -15,6 +32,7 @@ Usage:
   next: move to the next question
   scoreboard: show the last score board
   categories: show all available categories
+  config: show the current config
   exit: exit
   help: show this help text
 EOT
@@ -32,6 +50,7 @@ EOT
   end
 
   def initialize
+    @config = Configuration.new
     @questions = []
     @category = nil
     @current_question = nil
@@ -57,7 +76,7 @@ EOT
       end
 
       opts.on('-d', '--debug', 'Enables XMPP debug logging') do
-        Jabber.debug = true
+        @config.debug = true
       end
 
       opts.on('-h', '--help', 'Prints this help message') do
@@ -233,6 +252,23 @@ EOT
     end
   end
 
+  def say_config
+    say @config.to_s
+  end
+
+  def handle_set(parameter)
+    matches = parameter.match(/(\S+) (\S+)/)
+    option = matches[1]
+    value = matches[2]
+
+    case option
+    when 'debug'
+      @config.debug = value == 'true'
+    else
+      say 'Unknown option'
+    end
+  end
+
   def run
     jid = Jabber::JID.new(@jid)
     client = Jabber::Client.new(jid)
@@ -267,6 +303,10 @@ EOT
         say_scoreboard
       when 'categories'
         handle_categories
+      when 'config'
+        say_config
+      when 'set'
+        handle_set parameter
       when 'exit'
         @muc_client.exit "Exiting on behalf of #{nick}"
         mainthread.wakeup
