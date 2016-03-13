@@ -62,6 +62,10 @@ EOT
 
     return if try_load_config
 
+    parse_options
+  end
+
+  def parse_options
     optparse = OptionParser.new do |opts|
       opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
 
