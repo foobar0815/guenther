@@ -5,10 +5,13 @@ require 'xmpp4r'
 require 'xmpp4r/muc/helper/simplemucclient'
 require 'yaml'
 
+# Guenther's runtime configuration
 class Configuration
+  attr_accessor :category
   attr_reader :debug
 
   def initialize
+    @category = 'all'
     @debug = false
   end
 
@@ -27,12 +30,13 @@ class Guenther
   CONFIG_FILE = 'guenther.yaml'.freeze # move to Configuration
   HELP_TEXT = <<EOT.freeze
 Usage:
-  startquiz <number of questions> [category]: start a quiz
+  startquiz <number of questions> [category|all]: start a quiz
   stopquiz: stops the current quiz
   next: move to the next question
   scoreboard: show the last score board
   categories: show all available categories
   config: show the current config
+  set: set a config value
   exit: exit
   help: show this help text
 EOT
@@ -52,7 +56,6 @@ EOT
   def initialize
     @config = Configuration.new
     @questions = []
-    @category = nil
     @current_question = nil
     @remaining_questions = 0
     @scoreboard = Hash.new(0)
@@ -87,6 +90,7 @@ EOT
 
     begin
       optparse.parse!
+      # TODO: Look at this, will it point out the missing argument?
       raise OptionParser::MissingArgument unless @jid
       raise OptionParser::MissingArgument unless @password
       raise OptionParser::MissingArgument unless @room
@@ -118,10 +122,10 @@ EOT
   end
 
   def ask_question
-    questions = if @category
-                  @questions.select { |q| q['Category'] == @category }
-                else
+    questions = if @config.category == 'all'
                   @questions
+                else
+                  @questions.select { |q| q['Category'] == @config.category }
                 end
     @current_question = questions.sample
     @current_question['lifetime'] = Time.now + 60
@@ -208,13 +212,7 @@ EOT
     end
     @remaining_questions = number_of_questions
 
-    # category can be nil at this point, which is fine as we
-    # can have questions without a category as well
-    unless @questions.any? { |q| q['Category'] == category }
-      say "Could not find any questions in category #{category}"
-      return
-    end
-    @category = category
+    return unless set_category(category)
 
     @scoreboard.clear
     ask_question
@@ -235,7 +233,6 @@ EOT
     if @current_question
       say_scoreboard
       @current_question = nil
-      @category = nil
     else
       say 'No quiz is running'
     end
@@ -258,12 +255,23 @@ EOT
     say @config.to_s
   end
 
+  def set_category(value)
+    unless value == 'all' || @questions.any? { |q| q['Category'] == value }
+      say "Could not find any questions in category #{value}"
+      return false
+    end
+    @config.category = value
+    true
+  end
+
   def handle_set(parameter)
     matches = parameter.match(/(\S+) (\S+)/)
     option = matches[1]
     value = matches[2]
 
     case option
+    when 'category'
+      set_category value
     when 'debug'
       @config.debug = value == 'true'
     else
