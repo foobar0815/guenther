@@ -259,6 +259,7 @@ EOT
     say @config.to_s
   end
 
+  # rubocop:disable Style/AccessorMethodName
   def set_category(value)
     unless value == 'all' || @questions.any? { |q| q['Category'] == value }
       say "Could not find any questions in category #{value}"
@@ -267,6 +268,7 @@ EOT
     @config.category = value
     true
   end
+  # rubocop:enable Style/AccessorMethodName
 
   def handle_set(parameter)
     matches = parameter.match(/(\S+) (\S+)/)
@@ -283,7 +285,7 @@ EOT
     end
   end
 
-  def run
+  def setup
     jid = Jabber::JID.new(@jid)
     client = Jabber::Client.new(jid)
     client.connect
@@ -291,7 +293,44 @@ EOT
     @muc_client = Jabber::MUC::SimpleMUCClient.new(client)
     @muc_client.join(@room)
 
-    mainthread = Thread.current
+    @mainthread = Thread.current
+  end
+
+  def wait_and_shutdown
+    Thread.stop
+    @muc_client.exit "Exiting on behalf of #{nick}"
+    client.close
+  end
+
+  # rubocop:disable Metrics/CyclomaticComplexity
+  def dispatch(command, parameter)
+    case command
+    when 'startquiz'
+      start_quiz parameter
+    when 'stopquiz'
+      stop_quiz
+    when 'next'
+      handle_next
+    when 'scoreboard'
+      say_scoreboard
+    when 'categories'
+      handle_categories
+    when 'config'
+      say_config
+    when 'set'
+      handle_set parameter
+    when 'exit'
+      @mainthread.wakeup
+    when 'help'
+      say HELP_TEXT
+    else
+      say 'Unknown command, try help'
+    end
+  end
+  # rubocop:enable Metrics/CyclomaticComplexity
+
+  def run
+    setup
 
     @muc_client.on_message do |time, nick, text|
       # Avoid reacting on messages delivered as room history
@@ -305,34 +344,10 @@ EOT
       next unless talking_to_me? text
 
       command, parameter = extract_command(text)
-
-      case command
-      when 'startquiz'
-        start_quiz parameter
-      when 'stopquiz'
-        stop_quiz
-      when 'next'
-        handle_next
-      when 'scoreboard'
-        say_scoreboard
-      when 'categories'
-        handle_categories
-      when 'config'
-        say_config
-      when 'set'
-        handle_set parameter
-      when 'exit'
-        @muc_client.exit "Exiting on behalf of #{nick}"
-        mainthread.wakeup
-      when 'help'
-        say HELP_TEXT
-      else
-        say 'Unknown command, try help'
-      end
+      dispatch command, parameter
     end
 
-    Thread.stop
-    client.close
+    wait_and_shutdown
   end
 end
 
