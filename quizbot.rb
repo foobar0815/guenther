@@ -7,12 +7,13 @@ require 'yaml'
 
 # Guenther's runtime configuration
 class Configuration
-  attr_accessor :category
+  attr_accessor :category, :timeout
   attr_reader :debug
 
   def initialize
     @category = 'all'
     @debug = false
+    @timeout = 60
   end
 
   def to_s
@@ -132,7 +133,7 @@ EOT
                   @questions.select { |q| q['Category'] == @config.category }
                 end
     @current_question = questions.sample
-    @current_question['lifetime'] = Time.now + 60
+    @current_question['timeout'] = Time.now + @config.timeout
     if @current_question['Category']
       say "[#{@current_question['Category']}] #{@current_question['Question']}"
     else
@@ -226,7 +227,7 @@ EOT
       while @current_question
         # XXX this crashes at the end of the quiz because @current_question
         # will be set to nil
-        sleep 1 while Time.now < @current_question['lifetime']
+        sleep 1 while Time.now < @current_question['timeout']
         answer_question
         ask_question
       end
@@ -268,6 +269,13 @@ EOT
     @config.category = value
     true
   end
+
+  def set_timeout(value)
+    timeout = Integer(value)
+    @config.timeout = timeout
+  rescue ArgumentError => e
+    say "Could not set timeout: #{e}"
+  end
   # rubocop:enable Style/AccessorMethodName
 
   def handle_set(parameter)
@@ -278,6 +286,8 @@ EOT
     case option
     when 'category'
       set_category value
+    when 'timeout'
+      set_timeout value
     when 'debug'
       @config.debug = value == 'true'
     else
