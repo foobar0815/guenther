@@ -137,15 +137,12 @@ EOT
                 else
                   @questions.select { |q| q['Category'] == @config.category }
                 end
-    questions.shuffle.each_with_index do |question, index|
-      if index == questions.length - 1
-        reset_questions
-      end
-      unless question['used']
-        @current_question = question
-        break
-      end
+    unused_questions = questions.reject { |q| q['used'] }
+    if unused_questions.empty?
+      reset_questions
+      unused_questions = questions
     end
+    @current_question = unused_questions.sample
     @current_question['used'] = true
     @current_question['lifetime'] = Time.now + 60
     if @current_question['Category']
