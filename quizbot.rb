@@ -280,6 +280,10 @@ EOT
 
   def handle_set(parameter)
     matches = parameter.match(/(\S+) (\S+)/)
+    unless matches
+      say "Invalid option/value"
+      return
+    end
     option = matches[1]
     value = matches[2]
 
