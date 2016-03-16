@@ -118,11 +118,17 @@ EOT
             cur_question = nil
           end
         else
-          cur_question ||= {}
+          cur_question ||= { 'used' => false }
           linesplit = line.split(': ', 2)
           cur_question[linesplit.first.strip] = linesplit.last.strip
         end
       end
+    end
+  end
+
+  def reset_questions
+    @questions.each do |question|
+      question['used'] = false
     end
   end
 
@@ -132,7 +138,13 @@ EOT
                 else
                   @questions.select { |q| q['Category'] == @config.category }
                 end
-    @current_question = questions.sample
+    unused_questions = questions.reject { |q| q['used'] }
+    if unused_questions.empty?
+      reset_questions
+      unused_questions = questions
+    end
+    @current_question = unused_questions.sample
+    @current_question['used'] = true
     @current_question['timeout'] = Time.now + @config.timeout
     if @current_question['Category']
       say "[#{@current_question['Category']}] #{@current_question['Question']}"
