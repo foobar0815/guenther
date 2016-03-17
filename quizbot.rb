@@ -324,7 +324,7 @@ EOT
 
   def wait_and_shutdown
     Thread.stop
-    @muc_client.exit "Exiting on behalf of #{nick}"
+    @muc_client.exit "Goodbye."
     client.close
   end
 
