@@ -7,12 +7,13 @@ require 'yaml'
 
 # Guenther's runtime configuration
 class Configuration
-  attr_accessor :category, :timeout
+  attr_accessor :category, :number_of_questions, :timeout
   attr_reader :debug
 
   def initialize
     @category = 'all'
     @debug = false
+    @number_of_questions = 10
     @timeout = 60
   end
 
@@ -31,13 +32,13 @@ class Guenther
   CONFIG_FILE = 'guenther.yaml'.freeze # move to Configuration
   HELP_TEXT = <<EOT.freeze
 Usage:
-  startquiz <number of questions> [category|all]: start a quiz
+  startquiz [number of questions]: start a quiz
   stopquiz: stops the current quiz
   next: move to the next question
   scoreboard: show the last score board
   categories: show all available categories
   config: show the current config
-  set: set a config value
+  set <option> <value>: set a config value
   exit: exit
   help: show this help text
 EOT
@@ -220,18 +221,16 @@ EOT
       return
     end
 
-    matches = parameter.match(/(\d+)? ?(\S+)?/)
-    number_of_questions = matches[1].to_i
-    category = matches[2]
-
-    # Handle not well formed parameter
-    if number_of_questions == 0
-      say "Invalid number of questions: #{matches[1]}"
-      return
+    if parameter.empty?
+      @remaining_questions = @config.number_of_questions
+    else
+      begin
+        @remaining_questions = Integer(parameter)
+      rescue ArgumentError
+        say "Invalid number of questions: #{parameter}"
+        return
+      end
     end
-    @remaining_questions = number_of_questions
-
-    return unless set_category(category)
 
     @scoreboard.clear
     ask_question
@@ -278,10 +277,9 @@ EOT
   def set_category(value)
     unless value == 'all' || @questions.any? { |q| q['Category'] == value }
       say "Could not find any questions in category #{value}"
-      return false
+      return
     end
     @config.category = value
-    true
   end
 
   def set_timeout(value)
@@ -289,6 +287,12 @@ EOT
     @config.timeout = timeout
   rescue ArgumentError => e
     say "Could not set timeout: #{e}"
+  end
+
+  def set_number_of_questions(value)
+    @config.number_of_questions = Integer(value)
+  rescue ArgumentError => e
+    say "Could not set number_of_questions: #{e}"
   end
   # rubocop:enable Style/AccessorMethodName
 
@@ -304,6 +308,8 @@ EOT
     case option
     when 'category'
       set_category value
+    when 'number_of_questions'
+      set_number_of_questions value
     when 'timeout'
       set_timeout value
     when 'debug'
