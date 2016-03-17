@@ -66,6 +66,7 @@ EOT
     parse_options
   end
 
+  # rubocop:disable Metrics/AbcSize
   def parse_options
     optparse = OptionParser.new do |opts|
       opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
@@ -104,6 +105,7 @@ EOT
       exit 1
     end
   end
+  # rubocop:enable Metrics/AbcSize
 
   def load_questions
     cur_question = nil
@@ -293,7 +295,7 @@ EOT
   def handle_set(parameter)
     matches = parameter.match(/(\S+) (\S+)/)
     unless matches
-      say "Invalid option/value"
+      say 'Invalid option/value'
       return
     end
     option = matches[1]
