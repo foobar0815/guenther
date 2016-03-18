@@ -38,6 +38,7 @@ Usage:
   next: move to the next question
   scoreboard: show the last score board
   categories: show all available categories
+  languages: show all available languages
   config: show the current config
   set <option> <value>: set a config value
   exit: exit
@@ -113,6 +114,7 @@ EOT
     cur_question = nil
 
     Dir.glob('quizdata/*.utf8') do |filename|
+      language = filename.split(".")[filename.split(".").length-2]
       File.open(filename).each_line do |line|
         next if line.start_with?('#')
 
@@ -122,7 +124,7 @@ EOT
             cur_question = nil
           end
         else
-          cur_question ||= { 'used' => false }
+          cur_question ||= { 'used' => false, 'language' => language }
           linesplit = line.split(': ', 2)
           cur_question[linesplit.first.strip] = linesplit.last.strip
         end
@@ -194,6 +196,16 @@ EOT
     # Sort the above hash by key, this turns it into an array of arrays.
     # Map the outer array to an array of strings and join them with a comma.
     say count_per_category.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
+  end
+
+  def handle_languages
+    count_per_language = Hash.new(0)
+    @questions.each do |q|
+      l = q['language']
+      count_per_language[l] += 1
+    end
+
+    say count_per_language.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
   end
 
   def say_scoreboard
@@ -352,6 +364,8 @@ EOT
       say_scoreboard
     when 'categories'
       handle_categories
+    when 'languages'
+      handle_languages
     when 'config'
       say_config
     when 'set'
