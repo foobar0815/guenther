@@ -5,7 +5,8 @@ An XMPP quiz bot.
 
 ## Licensing
 
-This project is licensed under the terms of the MIT license, see LICENSE file.
+This project is licensed under the terms of the MIT license, see LICENSE.md
+file.
 
 [MoxQuizz](http://moxquizz.de) data files are distributed under the terms of the
 GNU General Public License version 2 (GPLv2).
