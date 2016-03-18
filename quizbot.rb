@@ -7,12 +7,14 @@ require 'yaml'
 
 # Guenther's runtime configuration
 class Configuration
-  attr_accessor :category, :number_of_questions, :show_answer, :timeout
+  attr_accessor :category, :language, :number_of_questions, :show_answer,
+                :timeout
   attr_reader :debug
 
   def initialize
     @category = 'all'
     @debug = false
+    @language = 'all'
     @number_of_questions = 10
     @show_answer = false
     @timeout = 60
@@ -139,10 +141,15 @@ EOT
   end
 
   def ask_question
-    questions = if @config.category == 'all'
+    questions = if @config.language == 'all'
                   @questions
                 else
-                  @questions.select { |q| q['Category'] == @config.category }
+                  @questions.select { |l| l['language'] == @config.language }
+                end
+    questions = if @config.category == 'all'
+                  questions
+                else
+                  questions.select { |q| q['Category'] == @config.category }
                 end
     unused_questions = questions.reject { |q| q['used'] }
     if unused_questions.empty?
@@ -187,8 +194,13 @@ EOT
   end
 
   def handle_categories
+    questions = if @config.language == 'all'
+                  @questions
+                else
+                  @questions.select { |l| l['language'] == @config.language }
+                end
     count_per_category = Hash.new(0)
-    @questions.each do |q|
+    questions.each do |q|
       c = q['Category']
       count_per_category[c] += 1 if c
     end
@@ -295,6 +307,14 @@ EOT
     @config.category = value
   end
 
+  def set_language(value)
+    unless value == 'all' || @questions.any? { |q| q['language'] == value }
+      say "Could not find any questions in #{value} language"
+      return
+    end
+    @config.language = value
+  end
+
   def set_timeout(value)
     timeout = Integer(value)
     @config.timeout = timeout
@@ -321,6 +341,8 @@ EOT
     case option
     when 'category'
       set_category value
+    when 'language'
+      set_language value
     when 'number_of_questions'
       set_number_of_questions value
     when 'show_answer'
