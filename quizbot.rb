@@ -7,12 +7,14 @@ require 'yaml'
 
 # Guenther's runtime configuration
 class Configuration
-  attr_accessor :category, :number_of_questions, :show_answer, :timeout
+  attr_accessor :category, :language, :number_of_questions, :show_answer,
+                :timeout
   attr_reader :debug
 
   def initialize
     @category = 'all'
     @debug = false
+    @language = 'all'
     @number_of_questions = 10
     @show_answer = false
     @timeout = 60
@@ -309,6 +311,8 @@ EOT
     case option
     when 'category'
       set_category value
+    when 'language'
+      @config.language = value
     when 'number_of_questions'
       set_number_of_questions value
     when 'show_answer'
