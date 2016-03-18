@@ -7,13 +7,14 @@ require 'yaml'
 
 # Guenther's runtime configuration
 class Configuration
-  attr_accessor :category, :number_of_questions, :timeout
+  attr_accessor :category, :number_of_questions, :show_answer, :timeout
   attr_reader :debug
 
   def initialize
     @category = 'all'
     @debug = false
     @number_of_questions = 10
+    @show_answer = false
     @timeout = 60
   end
 
@@ -159,7 +160,7 @@ EOT
   def answer_question
     regex = @current_question['Regexp']
     say regex if regex && @config.debug
-    say @current_question['Answer'].delete('#')
+    say @current_question['Answer'].delete('#') if @config.show_answer
   end
 
   def handle_answer(nick, text)
@@ -310,6 +311,8 @@ EOT
       set_category value
     when 'number_of_questions'
       set_number_of_questions value
+    when 'show_answer'
+      @config.show_answer = value == 'true'
     when 'timeout'
       set_timeout value
     when 'debug'
@@ -332,7 +335,7 @@ EOT
 
   def wait_and_shutdown
     Thread.stop
-    @muc_client.exit "Goodbye."
+    @muc_client.exit 'Goodbye.'
     client.close
   end
 
