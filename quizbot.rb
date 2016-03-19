@@ -7,6 +7,8 @@ require 'yaml'
 
 # Guenther's runtime configuration
 class Configuration
+  CONFIG_FILE = 'guenther.yaml'.freeze
+
   attr_accessor :category, :language, :number_of_questions, :show_answer,
                 :timeout
   attr_reader :debug
@@ -28,6 +30,27 @@ class Configuration
     @debug = value
     Jabber.debug = @debug
   end
+
+  def to_h
+    instance_variables.map { |var|
+      # Map symbol strings to strings without the @ sign and the corresponding
+      # value
+      [var[1..-1], instance_variable_get(var)]
+    }.to_h
+  end
+
+  def save
+    File.open(CONFIG_FILE, 'w') do |file|
+      file.write to_h.to_yaml
+    end
+  end
+
+  def load
+    config = YAML.load_file(CONFIG_FILE)
+    config.each do |k, v|
+      instance_variable_set("@#{k}", v)
+    end
+  end
 end
 
 # The main class implementing the XMPP quiz bot
@@ -43,6 +66,8 @@ Usage:
   languages: show all available languages
   config: show the current config
   set <option> <value>: set a config value
+  save: save current config to file
+  load: load config from file
   exit: exit
   help: show this help text
 EOT
@@ -292,6 +317,14 @@ EOT
     end
   end
 
+  def handle_save
+    @config.save
+  end
+
+  def handle_load
+    @config.load
+  end
+
   def say_config
     say @config.to_s
   end
@@ -390,6 +423,10 @@ EOT
       say_config
     when 'set'
       handle_set parameter
+    when 'save'
+      handle_save
+    when 'load'
+      handle_load
     when 'exit'
       @mainthread.wakeup
     when 'help'
