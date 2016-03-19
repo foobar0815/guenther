@@ -33,7 +33,8 @@ class Configuration
 
   def to_h
     instance_variables.map { |var|
-      # Map symbol strings to strings without the @ sign
+      # Map symbol strings to strings without the @ sign and the corresponding
+      # value
       [var[1..-1], instance_variable_get(var)]
     }.to_h
   end
@@ -65,6 +66,8 @@ Usage:
   languages: show all available languages
   config: show the current config
   set <option> <value>: set a config value
+  save: save current config to file
+  load: load config from file
   exit: exit
   help: show this help text
 EOT
@@ -314,6 +317,14 @@ EOT
     end
   end
 
+  def handle_save
+    @config.save
+  end
+
+  def handle_load
+    @config.load
+  end
+
   def say_config
     say @config.to_s
   end
@@ -412,6 +423,10 @@ EOT
       say_config
     when 'set'
       handle_set parameter
+    when 'save'
+      handle_save
+    when 'load'
+      handle_load
     when 'exit'
       @mainthread.wakeup
     when 'help'
