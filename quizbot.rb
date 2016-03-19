@@ -147,9 +147,9 @@ EOT
                 else
                   @questions.select { |q| q['language'] == @config.language }
                 end
-    questions = unless @config.category == 'all'
-                  questions.select! { |q| q['Category'] == @config.category }
-                end
+    unless @config.category == 'all'
+      questions.select! { |q| q['Category'] == @config.category }
+    end
     unused_questions = questions.reject { |q| q['used'] }
     if unused_questions.empty?
       reset_questions
