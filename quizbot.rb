@@ -116,7 +116,7 @@ EOT
     cur_question = nil
 
     Dir.glob('quizdata/*.utf8') do |filename|
-      language = filename.split(".")[filename.split(".").length-2]
+      language = filename.split('.')
       File.open(filename).each_line do |line|
         next if line.start_with?('#')
 
@@ -126,7 +126,8 @@ EOT
             cur_question = nil
           end
         else
-          cur_question ||= { 'used' => false, 'language' => language }
+          cur_question ||= { 'used' => false,
+                             'language' => language[language.length - 2] }
           linesplit = line.split(': ', 2)
           cur_question[linesplit.first.strip] = linesplit.last.strip
         end
@@ -144,12 +145,10 @@ EOT
     questions = if @config.language == 'all'
                   @questions
                 else
-                  @questions.select { |l| l['language'] == @config.language }
+                  @questions.select { |q| q['language'] == @config.language }
                 end
-    questions = if @config.category == 'all'
-                  questions
-                else
-                  questions.select { |q| q['Category'] == @config.category }
+    questions = unless @config.category == 'all'
+                  questions.select! { |q| q['Category'] == @config.category }
                 end
     unused_questions = questions.reject { |q| q['used'] }
     if unused_questions.empty?
@@ -197,7 +196,7 @@ EOT
     questions = if @config.language == 'all'
                   @questions
                 else
-                  @questions.select { |l| l['language'] == @config.language }
+                  @questions.select { |q| q['language'] == @config.language }
                 end
     count_per_category = Hash.new(0)
     questions.each do |q|
@@ -213,8 +212,7 @@ EOT
   def handle_languages
     count_per_language = Hash.new(0)
     @questions.each do |q|
-      l = q['language']
-      count_per_language[l] += 1
+      count_per_language[q['language']] += 1
     end
 
     say count_per_language.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
@@ -309,7 +307,7 @@ EOT
 
   def set_language(value)
     unless value == 'all' || @questions.any? { |q| q['language'] == value }
-      say "Could not find any questions in #{value} language"
+      say "Could not find any questions in language #{value}"
       return
     end
     @config.language = value
