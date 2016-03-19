@@ -217,30 +217,21 @@ EOT
     end
   end
 
-  def handle_categories
-    questions = if @config.language == 'all'
+  def count_values(key)
+    questions = if @config.language == 'all' || key == 'language'
                   @questions
                 else
                   @questions.select { |q| q['language'] == @config.language }
                 end
-    count_per_category = Hash.new(0)
+    count_per_value = Hash.new(0)
     questions.each do |q|
-      c = q['Category']
-      count_per_category[c] += 1 if c
+      v = q[key]
+      count_per_value[v] += 1 if v
     end
 
     # Sort the above hash by key, this turns it into an array of arrays.
     # Map the outer array to an array of strings and join them with a comma.
-    say count_per_category.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
-  end
-
-  def handle_languages
-    count_per_language = Hash.new(0)
-    @questions.each do |q|
-      count_per_language[q['language']] += 1
-    end
-
-    say count_per_language.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
+    say count_per_value.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
   end
 
   def say_scoreboard
@@ -416,9 +407,9 @@ EOT
     when 'scoreboard'
       say_scoreboard
     when 'categories'
-      handle_categories
+      count_values('Category')
     when 'languages'
-      handle_languages
+      count_values('language')
     when 'config'
       say_config
     when 'set'
