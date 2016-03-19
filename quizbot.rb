@@ -116,7 +116,7 @@ EOT
     cur_question = nil
 
     Dir.glob('quizdata/*.utf8') do |filename|
-      language = filename.split('.')
+      language = filename.split('.')[-2]
       File.open(filename).each_line do |line|
         next if line.start_with?('#')
 
@@ -127,7 +127,7 @@ EOT
           end
         else
           cur_question ||= { 'used' => false,
-                             'language' => language[language.length - 2] }
+                             'language' => language }
           linesplit = line.split(': ', 2)
           cur_question[linesplit.first.strip] = linesplit.last.strip
         end
