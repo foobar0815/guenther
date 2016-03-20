@@ -158,7 +158,7 @@ Usage:
           end
         else
           cur_question ||= { 'used' => false,
-                             'language' => language }
+                             'Language' => language }
           linesplit = line.split(': ', 2)
           cur_question[linesplit.first.strip] = linesplit.last.strip
         end
@@ -176,7 +176,7 @@ Usage:
     questions = if @config.language == 'all'
                   @questions
                 else
-                  @questions.select { |q| q['language'] == @config.language }
+                  @questions.select { |q| q['Language'] == @config.language }
                 end
     unless @config.category == 'all'
       questions.select! { |q| q['Category'] == @config.category }
@@ -226,30 +226,21 @@ Usage:
     end
   end
 
-  def handle_categories
-    questions = if @config.language == 'all'
+  def say_number_of_questions_per(key)
+    questions = if @config.language == 'all' || key == 'Language'
                   @questions
                 else
-                  @questions.select { |q| q['language'] == @config.language }
+                  @questions.select { |q| q['Language'] == @config.language }
                 end
-    count_per_category = Hash.new(0)
+    counts = Hash.new(0)
     questions.each do |q|
-      c = q['Category']
-      count_per_category[c] += 1 if c
+      v = q[key]
+      counts[v] += 1 if v
     end
 
     # Sort the above hash by key, this turns it into an array of arrays.
     # Map the outer array to an array of strings and join them with a comma.
-    say count_per_category.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
-  end
-
-  def handle_languages
-    count_per_language = Hash.new(0)
-    @questions.each do |q|
-      count_per_language[q['language']] += 1
-    end
-
-    say count_per_language.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
+    say counts.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
   end
 
   def say_scoreboard
@@ -348,7 +339,7 @@ Usage:
   end
 
   def set_language(value)
-    unless value == 'all' || @questions.any? { |q| q['language'] == value }
+    unless value == 'all' || @questions.any? { |q| q['Language'] == value }
       say "Could not find any questions in language #{value}"
       return
     end
@@ -435,9 +426,9 @@ Usage:
     when 'scoreboard'
       say_scoreboard
     when 'categories'
-      handle_categories
+      say_number_of_questions_per 'Category'
     when 'languages'
-      handle_languages
+      say_number_of_questions_per 'Language'
     when 'config'
       say_config
     when 'set'
