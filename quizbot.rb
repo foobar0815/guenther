@@ -9,14 +9,15 @@ require 'yaml'
 class Configuration
   CONFIG_FILE = 'guenther.yaml'.freeze
 
-  attr_accessor :category, :language, :number_of_questions, :show_answer,
-                :timeout
+  attr_accessor :category, :language, :level, :number_of_questions,
+                :show_answer, :timeout
   attr_accessor :jid, :password, :room
   attr_reader :debug
 
   def initialize
     @category = 'all'
     @debug = false
+    @level = 'all'
     @language = 'all'
     @number_of_questions = 10
     @show_answer = false
@@ -31,6 +32,8 @@ class Configuration
     <<-EOT.chomp
 Configuration:
   category: #{@category}
+  debug: #{@debug}
+  level: #{@level}
   language: #{@language}
   number_of_questions: #{@number_of_questions}
   show_answer: #{@show_answer}
@@ -177,6 +180,9 @@ Usage:
                 end
     unless @config.category == 'all'
       questions.select! { |q| q['Category'] == @config.category }
+    end
+    unless @config.level == 'all'
+      questions.select! { |q| q['Level'] == @config.level }
     end
     unused_questions = questions.reject { |q| q['used'] }
     if unused_questions.empty?
@@ -361,6 +367,14 @@ Usage:
   rescue ArgumentError => e
     say "Could not set number_of_questions: #{e}"
   end
+
+  def set_level(value)
+    unless value == 'all' || @questions.any? { |q| q['level'] == value }
+      say "Could not find any questions with level #{value}"
+      return
+    end
+    @config.level = value
+  end
   # rubocop:enable Style/AccessorMethodName
 
   def handle_set(parameter)
@@ -385,6 +399,8 @@ Usage:
       set_timeout value
     when 'debug'
       @config.debug = value == 'true'
+    when 'level'
+      set_level value
     else
       say 'Unknown option'
     end
