@@ -152,7 +152,7 @@ EOT
           end
         else
           cur_question ||= { 'used' => false,
-                             'language' => language }
+                             'Language' => language }
           linesplit = line.split(': ', 2)
           cur_question[linesplit.first.strip] = linesplit.last.strip
         end
@@ -170,7 +170,7 @@ EOT
     questions = if @config.language == 'all'
                   @questions
                 else
-                  @questions.select { |q| q['language'] == @config.language }
+                  @questions.select { |q| q['Language'] == @config.language }
                 end
     unless @config.category == 'all'
       questions.select! { |q| q['Category'] == @config.category }
@@ -217,21 +217,21 @@ EOT
     end
   end
 
-  def count_values(key)
-    questions = if @config.language == 'all' || key == 'language'
+  def say_number_of_questions_per(key)
+    questions = if @config.language == 'all' || key == 'Language'
                   @questions
                 else
-                  @questions.select { |q| q['language'] == @config.language }
+                  @questions.select { |q| q['Language'] == @config.language }
                 end
-    count_per_value = Hash.new(0)
+    counts = Hash.new(0)
     questions.each do |q|
       v = q[key]
-      count_per_value[v] += 1 if v
+      counts[v] += 1 if v
     end
 
     # Sort the above hash by key, this turns it into an array of arrays.
     # Map the outer array to an array of strings and join them with a comma.
-    say count_per_value.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
+    say counts.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
   end
 
   def say_scoreboard
@@ -330,7 +330,7 @@ EOT
   end
 
   def set_language(value)
-    unless value == 'all' || @questions.any? { |q| q['language'] == value }
+    unless value == 'all' || @questions.any? { |q| q['Language'] == value }
       say "Could not find any questions in language #{value}"
       return
     end
@@ -407,9 +407,9 @@ EOT
     when 'scoreboard'
       say_scoreboard
     when 'categories'
-      count_values('Category')
+      say_number_of_questions_per 'Category'
     when 'languages'
-      count_values('language')
+      say_number_of_questions_per 'Language'
     when 'config'
       say_config
     when 'set'
