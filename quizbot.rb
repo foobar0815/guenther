@@ -11,6 +11,7 @@ class Configuration
 
   attr_accessor :category, :language, :number_of_questions, :show_answer,
                 :timeout
+  attr_accessor :jid, :password, :room
   attr_reader :debug
 
   def initialize
@@ -20,10 +21,21 @@ class Configuration
     @number_of_questions = 10
     @show_answer = false
     @timeout = 60
+
+    @jid = ''
+    @password = ''
+    @room = ''
   end
 
   def to_s
-    inspect
+    <<-EOT.chomp
+Configuration:
+  category: #{@category}
+  language: #{@language}
+  number_of_questions: #{@number_of_questions}
+  show_answer: #{@show_answer}
+  timeout: #{@timeout}
+    EOT
   end
 
   def debug=(value)
@@ -55,8 +67,7 @@ end
 
 # The main class implementing the XMPP quiz bot
 class Guenther
-  CONFIG_FILE = 'guenther.yaml'.freeze # move to Configuration
-  HELP_TEXT = <<EOT.freeze
+  HELP_TEXT = <<-EOT.chomp.freeze
 Usage:
   startquiz [number of questions]: start a quiz
   stopquiz: stops the current quiz
@@ -70,19 +81,7 @@ Usage:
   load: load config from file
   exit: exit
   help: show this help text
-EOT
-
-  def try_load_config
-    return false unless File.readable? CONFIG_FILE
-    config = YAML.load_file(CONFIG_FILE)
-    # config will be false if the file was empty
-    return false unless config
-
-    @jid = config['jid']
-    @password = config['password']
-    @room = config['room']
-    true
-  end
+  EOT
 
   def initialize
     @config = Configuration.new
@@ -91,7 +90,11 @@ EOT
     @remaining_questions = 0
     @scoreboard = Hash.new(0)
 
-    return if try_load_config
+    begin
+      @config.load
+    rescue Errno::ENOENT => e
+      STDERR.puts "Could not load config from #{CONFIG_FILE}: #{e}"
+    end
 
     parse_options
   end
@@ -102,16 +105,16 @@ EOT
       opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
 
       opts.on('-j', '--jid JID', 'Jabber identifier') do |j|
-        @jid = j
+        @config.jid = j
       end
 
       opts.on('-p', '--password PASSWORD', 'Password') do |p|
-        @password = p
+        @config.password = p
       end
 
       opts.on('-r', '--room ROOM',
               'Multi-user chat room (room@conference.example.com/nick)') do |r|
-        @room = r
+        @config.room = r
       end
 
       opts.on('-d', '--debug', 'Enables XMPP debug logging') do
@@ -127,9 +130,9 @@ EOT
     begin
       optparse.parse!
       # TODO: Look at this, will it point out the missing argument?
-      raise OptionParser::MissingArgument unless @jid
-      raise OptionParser::MissingArgument unless @password
-      raise OptionParser::MissingArgument unless @room
+      raise OptionParser::MissingArgument if @config.jid.empty?
+      raise OptionParser::MissingArgument if @config.password.empty?
+      raise OptionParser::MissingArgument if @config.room.empty?
     rescue
       puts optparse
       exit 1
@@ -388,12 +391,12 @@ EOT
   end
 
   def setup
-    jid = Jabber::JID.new(@jid)
-    client = Jabber::Client.new(jid)
-    client.connect
-    client.auth(@password)
-    @muc_client = Jabber::MUC::SimpleMUCClient.new(client)
-    @muc_client.join(@room)
+    jid = Jabber::JID.new(@config.jid)
+    @client = Jabber::Client.new(jid)
+    @client.connect
+    @client.auth(@config.password)
+    @muc_client = Jabber::MUC::SimpleMUCClient.new(@client)
+    @muc_client.join(@config.room)
 
     @mainthread = Thread.current
   end
@@ -401,7 +404,7 @@ EOT
   def wait_and_shutdown
     Thread.stop
     @muc_client.exit 'Goodbye.'
-    client.close
+    @client.close
   end
 
   # rubocop:disable Metrics/CyclomaticComplexity
