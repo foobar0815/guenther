@@ -7,8 +7,11 @@ require 'yaml'
 
 # Guenther's runtime configuration
 class Configuration
+  CONFIG_FILE = 'guenther.yaml'.freeze
+
   attr_accessor :category, :language, :number_of_questions, :show_answer,
                 :timeout
+  attr_accessor :jid, :password, :room
   attr_reader :debug
 
   def initialize
@@ -18,45 +21,67 @@ class Configuration
     @number_of_questions = 10
     @show_answer = false
     @timeout = 60
+
+    @jid = ''
+    @password = ''
+    @room = ''
   end
 
   def to_s
-    inspect
+    <<-EOT.chomp
+Configuration:
+  category: #{@category}
+  language: #{@language}
+  number_of_questions: #{@number_of_questions}
+  show_answer: #{@show_answer}
+  timeout: #{@timeout}
+    EOT
   end
 
   def debug=(value)
     @debug = value
     Jabber.debug = @debug
   end
+
+  def to_h
+    instance_variables.map { |var|
+      # Map symbol strings to strings without the @ sign and the corresponding
+      # value
+      [var[1..-1], instance_variable_get(var)]
+    }.to_h
+  end
+
+  def save
+    File.open(CONFIG_FILE, 'w') do |file|
+      file.write to_h.to_yaml
+    end
+  end
+
+  def load
+    config = YAML.load_file(CONFIG_FILE)
+    config.each do |k, v|
+      instance_variable_set("@#{k}", v)
+    end
+  end
 end
 
 # The main class implementing the XMPP quiz bot
 class Guenther
-  CONFIG_FILE = 'guenther.yaml'.freeze # move to Configuration
-  HELP_TEXT = <<EOT.freeze
+  HELP_TEXT = <<-EOT.chomp.freeze
 Usage:
   startquiz [number of questions]: start a quiz
   stopquiz: stops the current quiz
   next: move to the next question
   scoreboard: show the last score board
   categories: show all available categories
+  languages: show all available languages
   config: show the current config
   set <option> <value>: set a config value
+  save: save current config to file
+  load: load config from file
   exit: exit
   help: show this help text
-EOT
-
-  def try_load_config
-    return false unless File.readable? CONFIG_FILE
-    config = YAML.load_file(CONFIG_FILE)
-    # config will be false if the file was empty
-    return false unless config
-
-    @jid = config['jid']
-    @password = config['password']
-    @room = config['room']
-    true
-  end
+  EOT
 
   def initialize
     @config = Configuration.new
@@ -65,7 +90,11 @@ EOT
     @remaining_questions = 0
     @scoreboard = Hash.new(0)
 
-    return if try_load_config
+    begin
+      @config.load
+    rescue Errno::ENOENT => e
+      STDERR.puts "Could not load config from #{CONFIG_FILE}: #{e}"
+    end
 
     parse_options
   end
@@ -76,16 +105,16 @@ EOT
       opts.banner = "Usage: #{$PROGRAM_NAME} [options]"
 
       opts.on('-j', '--jid JID', 'Jabber identifier') do |j|
-        @jid = j
+        @config.jid = j
       end
 
       opts.on('-p', '--password PASSWORD', 'Password') do |p|
-        @password = p
+        @config.password = p
       end
 
       opts.on('-r', '--room ROOM',
               'Multi-user chat room (room@conference.example.com/nick)') do |r|
-        @room = r
+        @config.room = r
       end
 
       opts.on('-d', '--debug', 'Enables XMPP debug logging') do
@@ -101,9 +130,9 @@ EOT
     begin
       optparse.parse!
       # TODO: Look at this, will it point out the missing argument?
-      raise OptionParser::MissingArgument unless @jid
-      raise OptionParser::MissingArgument unless @password
-      raise OptionParser::MissingArgument unless @room
+      raise OptionParser::MissingArgument if @config.jid.empty?
+      raise OptionParser::MissingArgument if @config.password.empty?
+      raise OptionParser::MissingArgument if @config.room.empty?
     rescue
       puts optparse
       exit 1
@@ -115,6 +144,7 @@ EOT
     cur_question = nil
 
     Dir.glob('quizdata/*.utf8') do |filename|
+      language = filename.split('.')[-2]
       File.open(filename).each_line do |line|
         next if line.start_with?('#')
 
@@ -124,7 +154,8 @@ EOT
             cur_question = nil
           end
         else
-          cur_question ||= { 'used' => false }
+          cur_question ||= { 'used' => false,
+                             'language' => language }
           linesplit = line.split(': ', 2)
           cur_question[linesplit.first.strip] = linesplit.last.strip
         end
@@ -139,11 +170,14 @@ EOT
   end
 
   def ask_question
-    questions = if @config.category == 'all'
+    questions = if @config.language == 'all'
                   @questions
                 else
-                  @questions.select { |q| q['Category'] == @config.category }
+                  @questions.select { |q| q['language'] == @config.language }
                 end
+    unless @config.category == 'all'
+      questions.select! { |q| q['Category'] == @config.category }
+    end
     unused_questions = questions.reject { |q| q['used'] }
     if unused_questions.empty?
       reset_questions
@@ -187,8 +221,13 @@ EOT
   end
 
   def handle_categories
+    questions = if @config.language == 'all'
+                  @questions
+                else
+                  @questions.select { |q| q['language'] == @config.language }
+                end
     count_per_category = Hash.new(0)
-    @questions.each do |q|
+    questions.each do |q|
       c = q['Category']
       count_per_category[c] += 1 if c
     end
@@ -196,6 +235,15 @@ EOT
     # Sort the above hash by key, this turns it into an array of arrays.
     # Map the outer array to an array of strings and join them with a comma.
     say count_per_category.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
+  end
+
+  def handle_languages
+    count_per_language = Hash.new(0)
+    @questions.each do |q|
+      count_per_language[q['language']] += 1
+    end
+
+    say count_per_language.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
   end
 
   def say_scoreboard
@@ -272,6 +320,14 @@ EOT
     end
   end
 
+  def handle_save
+    @config.save
+  end
+
+  def handle_load
+    @config.load
+  end
+
   def say_config
     say @config.to_s
   end
@@ -283,6 +339,14 @@ EOT
       return
     end
     @config.category = value
+  end
+
+  def set_language(value)
+    unless value == 'all' || @questions.any? { |q| q['language'] == value }
+      say "Could not find any questions in language #{value}"
+      return
+    end
+    @config.language = value
   end
 
   def set_timeout(value)
@@ -312,7 +376,7 @@ EOT
     when 'category'
       set_category value
     when 'language'
-      @config.language = value
+      set_language value
     when 'number_of_questions'
       set_number_of_questions value
     when 'show_answer'
@@ -327,12 +391,12 @@ EOT
   end
 
   def setup
-    jid = Jabber::JID.new(@jid)
-    client = Jabber::Client.new(jid)
-    client.connect
-    client.auth(@password)
-    @muc_client = Jabber::MUC::SimpleMUCClient.new(client)
-    @muc_client.join(@room)
+    jid = Jabber::JID.new(@config.jid)
+    @client = Jabber::Client.new(jid)
+    @client.connect
+    @client.auth(@config.password)
+    @muc_client = Jabber::MUC::SimpleMUCClient.new(@client)
+    @muc_client.join(@config.room)
 
     @mainthread = Thread.current
   end
@@ -340,7 +404,7 @@ EOT
   def wait_and_shutdown
     Thread.stop
     @muc_client.exit 'Goodbye.'
-    client.close
+    @client.close
   end
 
   # rubocop:disable Metrics/CyclomaticComplexity
@@ -356,10 +420,16 @@ EOT
       say_scoreboard
     when 'categories'
       handle_categories
+    when 'languages'
+      handle_languages
     when 'config'
       say_config
     when 'set'
       handle_set parameter
+    when 'save'
+      handle_save
+    when 'load'
+      handle_load
     when 'exit'
       @mainthread.wakeup
     when 'help'
