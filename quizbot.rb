@@ -47,11 +47,11 @@ Configuration:
   end
 
   def to_h
-    instance_variables.map { |var|
+    instance_variables.map do |var|
       # Map symbol strings to strings without the @ sign and the corresponding
       # value
       [var[1..-1], instance_variable_get(var)]
-    }.to_h
+    end.to_h
   end
 
   def save
