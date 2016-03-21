@@ -368,16 +368,33 @@ Usage:
   end
   # rubocop:enable Style/AccessorMethodName
 
+  def setup
+    jid = Jabber::JID.new(@config.jid)
+    @client = Jabber::Client.new(jid)
+    @client.connect
+    @client.auth(@config.password)
+    @muc_client = Jabber::MUC::SimpleMUCClient.new(@client)
+    @muc_client.join(@config.room)
+
+    @mainthread = Thread.current
+  end
+
+  def wait_and_shutdown
+    Thread.stop
+    @muc_client.exit 'Goodbye.'
+    @client.close
+  end
+
+  # rubocop:disable Metrics/CyclomaticComplexity
   def handle_set(parameter)
     matches = parameter.match(/(\S+) (\S+)/)
     unless matches
       say 'Invalid option/value'
       return
     end
-    option = matches[1]
     value = matches[2]
 
-    case option
+    case matches[1]
     when 'category'
       set_category value
     when 'language'
@@ -397,24 +414,6 @@ Usage:
     end
   end
 
-  def setup
-    jid = Jabber::JID.new(@config.jid)
-    @client = Jabber::Client.new(jid)
-    @client.connect
-    @client.auth(@config.password)
-    @muc_client = Jabber::MUC::SimpleMUCClient.new(@client)
-    @muc_client.join(@config.room)
-
-    @mainthread = Thread.current
-  end
-
-  def wait_and_shutdown
-    Thread.stop
-    @muc_client.exit 'Goodbye.'
-    @client.close
-  end
-
-  # rubocop:disable Metrics/CyclomaticComplexity
   def dispatch(command, parameter)
     case command
     when 'startquiz'
