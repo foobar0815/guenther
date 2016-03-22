@@ -330,20 +330,12 @@ Usage:
   end
 
   # rubocop:disable Style/AccessorMethodName
-  def set_category(value)
-    unless value == 'all' || @questions.any? { |q| q['Category'] == value }
-      say "Could not find any questions in category #{value}"
+  def set_if_available(key, value)
+    unless value == 'all' || @questions.any? { |q| q[key] == value }
+      say "Could not find any matching questions"
       return
     end
     @config.category = value
-  end
-
-  def set_language(value)
-    unless value == 'all' || @questions.any? { |q| q['Language'] == value }
-      say "Could not find any questions in language #{value}"
-      return
-    end
-    @config.language = value
   end
 
   def set_timeout(value)
@@ -357,14 +349,6 @@ Usage:
     @config.number_of_questions = Integer(value)
   rescue ArgumentError => e
     say "Could not set number_of_questions: #{e}"
-  end
-
-  def set_level(value)
-    unless value == 'all' || @questions.any? { |q| q['level'] == value }
-      say "Could not find any questions with level #{value}"
-      return
-    end
-    @config.level = value
   end
   # rubocop:enable Style/AccessorMethodName
 
@@ -396,9 +380,9 @@ Usage:
 
     case matches[1]
     when 'category'
-      set_category value
+      set_if_available('Category', value)
     when 'language'
-      set_language value
+      set_if_available('Language', value)
     when 'number_of_questions'
       set_number_of_questions value
     when 'show_answer'
@@ -408,7 +392,7 @@ Usage:
     when 'debug'
       @config.debug = value == 'true'
     when 'level'
-      set_level value
+      set_if_available('Level', value)
     else
       say 'Unknown option'
     end
