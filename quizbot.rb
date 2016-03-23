@@ -332,7 +332,7 @@ Usage:
   # rubocop:disable Style/AccessorMethodName
   def set_if_available(key, value)
     unless value == 'all' || @questions.any? { |q| q[key] == value }
-      say "Could not find any matching questions"
+      say 'Could not find any matching questions'
       return
     end
     @config.category = value
