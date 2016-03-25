@@ -335,7 +335,7 @@ Usage:
       say 'Could not find any matching questions'
       return
     end
-    @config.category = value
+    @config.send(key.downcase+'=', value)
   end
 
   def set_timeout(value)
