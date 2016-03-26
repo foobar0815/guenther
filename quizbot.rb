@@ -169,7 +169,7 @@ Usage:
     begin
       @config.load
     rescue Errno::ENOENT => e
-      STDERR.puts "Could not load config from #{CONFIG_FILE}: #{e}"
+      STDERR.puts "Could not load config from #{Configuration::CONFIG_FILE}: #{e}"
     end
 
     parse_options
