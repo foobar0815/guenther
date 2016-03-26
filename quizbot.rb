@@ -65,6 +65,8 @@ Configuration:
     config.each do |k, v|
       instance_variable_set("@#{k}", v)
     end
+  rescue Errno::ENOENT => e
+    STDERR.puts "Could not load config from #{CONFIG_FILE}: #{e}"
   end
 end
 
@@ -162,15 +164,11 @@ Usage:
 
   def initialize
     @config = Configuration.new
+    @config.load
+
     @current_question = nil
     @remaining_questions = 0
     @scoreboard = Hash.new(0)
-
-    begin
-      @config.load
-    rescue Errno::ENOENT => e
-      STDERR.puts "Could not load config from #{Configuration::CONFIG_FILE}: #{e}"
-    end
 
     parse_options
 
