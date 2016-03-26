@@ -68,6 +68,80 @@ Configuration:
   end
 end
 
+# Questionpool contains all the questions and related function
+class Questionpool
+  def initialize
+    @questions = []
+  end
+
+  def get(language, category, level)
+    questions = @questions.select do |q|
+      (language == 'all' || q['Language'] == language) &&
+        (category == 'all' || q['Category'] == category) &&
+        (level == 'all' || q['Level'] == level) &&
+        !q['used']
+    end
+
+    if questions.empty?
+      reset_used_questions
+      return get(language, category, level)
+    end
+
+    question = questions.sample
+    question['used'] = true
+    question
+  end
+
+  def any_key_has_value?(key, value)
+    return true if value == 'all'
+
+    @questions.any? { |q| q[key] == value }
+  end
+
+  def load
+    cur_question = nil
+
+    Dir.glob('quizdata/*.utf8') do |filename|
+      language = filename.split('.')[-2]
+      File.open(filename).each_line do |line|
+        next if line.start_with?('#')
+
+        if line == "\n"
+          if cur_question
+            @questions.push(cur_question)
+            cur_question = nil
+          end
+        else
+          cur_question ||= { 'used' => false,
+                             'Language' => language }
+          linesplit = line.split(': ', 2)
+          cur_question[linesplit.first.strip] = linesplit.last.strip
+        end
+      end
+    end
+  end
+
+  def number_of_questions_per(key)
+    counts = Hash.new(0)
+    @questions.each do |q|
+      v = q[key]
+      counts[v] += 1 if v
+    end
+
+    # Sort the above hash by key, this turns it into an array of arrays.
+    # Map the outer array to an array of strings and join them with a comma.
+    counts.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
+  end
+
+  private
+
+  def reset_used_questions
+    @questions.each do |question|
+      question['used'] = false
+    end
+  end
+end
+
 # The main class implementing the XMPP quiz bot
 class Guenther
   HELP_TEXT = <<-EOT.chomp.freeze
@@ -88,7 +162,6 @@ Usage:
 
   def initialize
     @config = Configuration.new
-    @questions = []
     @current_question = nil
     @remaining_questions = 0
     @scoreboard = Hash.new(0)
@@ -100,6 +173,9 @@ Usage:
     end
 
     parse_options
+
+    @questionpool = Questionpool.new
+    @questionpool.load
   end
 
   # rubocop:disable Metrics/AbcSize
@@ -143,54 +219,9 @@ Usage:
   end
   # rubocop:enable Metrics/AbcSize
 
-  def load_questions
-    cur_question = nil
-
-    Dir.glob('quizdata/*.utf8') do |filename|
-      language = filename.split('.')[-2]
-      File.open(filename).each_line do |line|
-        next if line.start_with?('#')
-
-        if line == "\n"
-          if cur_question
-            @questions.push(cur_question)
-            cur_question = nil
-          end
-        else
-          cur_question ||= { 'used' => false,
-                             'Language' => language }
-          linesplit = line.split(': ', 2)
-          cur_question[linesplit.first.strip] = linesplit.last.strip
-        end
-      end
-    end
-  end
-
-  def reset_questions
-    @questions.each do |question|
-      question['used'] = false
-    end
-  end
-
   def ask_question
-    questions = if @config.language == 'all'
-                  @questions
-                else
-                  @questions.select { |q| q['Language'] == @config.language }
-                end
-    unless @config.category == 'all'
-      questions.select! { |q| q['Category'] == @config.category }
-    end
-    unless @config.level == 'all'
-      questions.select! { |q| q['Level'] == @config.level }
-    end
-    unused_questions = questions.reject { |q| q['used'] }
-    if unused_questions.empty?
-      reset_questions
-      unused_questions = questions
-    end
-    @current_question = unused_questions.sample
-    @current_question['used'] = true
+    @current_question = @questionpool.get(@config.language, @config.category,
+                                          @config.level)
     @current_question['timeout'] = Time.now + @config.timeout
     if @current_question['Category']
       say "[#{@current_question['Category']}] #{@current_question['Question']}"
@@ -227,20 +258,7 @@ Usage:
   end
 
   def say_number_of_questions_per(key)
-    questions = if @config.language == 'all' || key == 'Language'
-                  @questions
-                else
-                  @questions.select { |q| q['Language'] == @config.language }
-                end
-    counts = Hash.new(0)
-    questions.each do |q|
-      v = q[key]
-      counts[v] += 1 if v
-    end
-
-    # Sort the above hash by key, this turns it into an array of arrays.
-    # Map the outer array to an array of strings and join them with a comma.
-    say counts.sort.map { |e| "#{e[0]} (#{e[1]})" }.join(', ')
+    say @questionpool.number_of_questions_per(key)
   end
 
   def say_scoreboard
@@ -331,11 +349,11 @@ Usage:
 
   # rubocop:disable Style/AccessorMethodName
   def set_if_available(key, value)
-    unless value == 'all' || @questions.any? { |q| q[key] == value }
+    if @questionpool.any_key_has_value?(key, value)
+      @config.send(key.downcase+'=', value)
+    else
       say 'Could not find any matching questions'
-      return
     end
-    @config.send(key.downcase+'=', value)
   end
 
   def set_timeout(value)
@@ -454,6 +472,5 @@ end
 
 if __FILE__ == $PROGRAM_NAME
   guenther = Guenther.new
-  guenther.load_questions
   guenther.run
 end
