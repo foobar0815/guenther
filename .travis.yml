@@ -1,0 +1,3 @@
+language: ruby
+install: gem install xmpp4r
+script: ruby quizbot_test.rb
