@@ -10,5 +10,7 @@ rvm:
   - 2.3.0
   - jruby
   - rbx
-install: gem install minitest xmpp4r
+install:
+  - export JRUBY_OPTS='--client -J-XX:+TieredCompilation -J-XX:TieredStopAtLevel=1 -Xcext.enabled=false -J-Xss2m -Xcompile.invokedynamic=false'
+  - gem install minitest xmpp4r
 script: ruby quizbot_test.rb
