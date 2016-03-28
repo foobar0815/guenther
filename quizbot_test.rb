@@ -1,7 +1,7 @@
 require 'minitest/autorun'
 require "#{__dir__}/quizbot"
 
-class TestQuestionpool < Minitest::Test
+class TestQuestionpool < Minitest::Unit::TestCase
   def setup
     @questionpool = Questionpool.new
     # Load our actual questions as fixtures

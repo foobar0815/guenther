@@ -1,5 +1,16 @@
 language: ruby
 sudo: required
 dist: trusty
-install: gem install minitest xmpp4r
+branches:
+  only:
+    - master
+    - travis-ci
+rvm:
+  - default
+  - 2.3.0
+  - jruby
+  - rbx
+install:
+  - export JRUBY_OPTS='--client -J-XX:+TieredCompilation -J-XX:TieredStopAtLevel=1 -Xcext.enabled=false -J-Xss2m -Xcompile.invokedynamic=false'
+  - gem install minitest xmpp4r
 script: ruby quizbot_test.rb
