@@ -1,2 +1,5 @@
+engines:
+  rubocop: { enabled: true }
+  fixme:   { enabled: true }
 exclude_paths:
   - quizdata/**/*
