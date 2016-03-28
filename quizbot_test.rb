@@ -8,6 +8,20 @@ class TestQuestionpool < Minitest::Unit::TestCase
     @questionpool.load
   end
 
+  def test_get
+    questions = @questionpool.instance_variable_get(:@questions)
+    assert questions.none? { |q| q['used'] }
+
+    # Category Werkstoffe only contains one question
+    question1 = @questionpool.get('de', 'Werkstoffe', 'all')
+    assert_equal 'Kleister', question1['Answer']
+    assert questions.one? { |q| q['used'] }
+
+    question2 = @questionpool.get('de', 'Werkstoffe', 'all')
+    # Assert that we get the same question again
+    assert_same question1, question2
+  end
+
   def test_load
     assert !@questionpool.instance_variable_get(:@questions).empty?
   end
@@ -27,5 +41,17 @@ class TestQuestionpool < Minitest::Unit::TestCase
     ]
     assert_equal "category1 (2), category2 (1)",
                  qp.number_of_questions_per('Category')
+  end
+
+  def test_reset_used_questions
+    questions = [{'used' => false}, {'used' => true}]
+    qp = Questionpool.new
+    qp.instance_variable_set :@questions, questions
+
+    assert questions.one? { |q| q['used'] }
+
+    qp.send :reset_used_questions
+
+    assert questions.none? { |q| q['used'] }
   end
 end
