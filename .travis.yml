@@ -1,0 +1,5 @@
+language: ruby
+sudo: required
+dist: trusty
+install: gem install minitest xmpp4r
+script: ruby quizbot_test.rb
