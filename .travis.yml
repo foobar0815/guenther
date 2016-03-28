@@ -1,5 +1,14 @@
 language: ruby
 sudo: required
 dist: trusty
+branches:
+  only:
+    - master
+    - travis-ci
+rvm:
+  - default
+  - 2.3.0
+  - jruby
+  - rbx
 install: gem install minitest xmpp4r
 script: ruby quizbot_test.rb
