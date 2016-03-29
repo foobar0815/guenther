@@ -1,6 +1,7 @@
 require 'minitest/autorun'
 require "#{__dir__}/quizbot"
 
+# Tests for class Questionpool
 class TestQuestionpool < Minitest::Unit::TestCase
   def setup
     @questionpool = Questionpool.new
@@ -36,15 +37,15 @@ class TestQuestionpool < Minitest::Unit::TestCase
   def test_number_of_questions_per
     qp = Questionpool.new
     qp.instance_variable_set :@questions, [
-      {'Category' => 'category1'}, {'Category' => 'category1'},
-      { 'Category' => 'category2'}, {'Answer' => '42'},
+      { 'Category' => 'category1' }, { 'Category' => 'category1' },
+      { 'Category' => 'category2' }, { 'Answer' => '42' }
     ]
-    assert_equal "category1 (2), category2 (1)",
+    assert_equal 'category1 (2), category2 (1)',
                  qp.number_of_questions_per('Category')
   end
 
   def test_reset_used_questions
-    questions = [{'used' => false}, {'used' => true}]
+    questions = [{ 'used' => false }, { 'used' => true }]
     qp = Questionpool.new
     qp.instance_variable_set :@questions, questions
 

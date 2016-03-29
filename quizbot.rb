@@ -348,7 +348,7 @@ Usage:
   # rubocop:disable Style/AccessorMethodName
   def set_if_available(key, value)
     if @questionpool.any_key_has_value?(key, value)
-      @config.send(key.downcase+'=', value)
+      @config.send(key.downcase + '=', value)
     else
       say 'Could not find any matching questions'
     end
