@@ -56,3 +56,38 @@ class TestQuestionpool < Minitest::Unit::TestCase
     assert questions.none? { |q| q['used'] }
   end
 end
+
+# Tests for Configuration
+class TestConfiguration < Minitest::Unit::TestCase
+  def setup
+    @config = Configuration.new
+  end
+  def test_also_sets_jabber_debug
+    Jabber.debug = false
+    @config.debug = true
+    assert Jabber.debug
+    Jabber.debug = false
+  end
+
+  def test_to_s
+    expect = <<EOT.chomp
+Configuration:
+  category: all
+  debug: false
+  level: all
+  language: all
+  number_of_questions: 10
+  show_answer: false
+  timeout: 60
+EOT
+    assert_equal expect, @config.to_s
+  end
+
+  def test_to_h
+    expect = {"category"=>"all", "debug"=>false, "level"=>"all",
+              "language"=>"all", "number_of_questions"=>10,
+              "show_answer"=>false, "timeout"=>60, "jid"=>"", "password"=>"",
+              "room"=>""}
+    assert_equal expect, @config.to_h
+  end
+end
