@@ -90,4 +90,16 @@ EOT
               "room"=>""}
     assert_equal expect, @config.to_h
   end
+
+  def test_load
+    config = Configuration.new
+    YAML.stub(:load_file, {'debug' => true, 'test1' => 'foo'}) do
+      config.load
+      expect = {"category"=>"all", "debug"=>true, "level"=>"all",
+                "language"=>"all", "number_of_questions"=>10,
+                "show_answer"=>false, "timeout"=>60, "jid"=>"", "password"=>"",
+                "room"=>"", "test1"=>"foo"}
+      assert_equal expect, config.to_h
+    end
+  end
 end
