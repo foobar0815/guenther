@@ -1,0 +1,6 @@
+#!/usr/bin/env ruby
+
+require "#{__dir__}/quizbot"
+
+guenther = Guenther.new
+guenther.run
