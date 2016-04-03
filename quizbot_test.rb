@@ -62,11 +62,16 @@ class TestConfiguration < Minitest::Unit::TestCase
   def setup
     @config = Configuration.new
   end
+
   def test_also_sets_jabber_debug
-    Jabber.debug = false
-    @config.debug = true
-    assert Jabber.debug
-    Jabber.debug = false
+    Jabber.stub(:debuglog, nil) do
+      Jabber.stub(:warnlog, nil) do
+        Jabber.debug = false
+        @config.debug = true
+        assert Jabber.debug
+        Jabber.debug = false
+      end
+    end
   end
 
   def test_to_s
