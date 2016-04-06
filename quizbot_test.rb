@@ -89,21 +89,21 @@ EOT
   end
 
   def test_to_h
-    expect = {"category"=>"all", "debug"=>false, "level"=>"all",
-              "language"=>"all", "number_of_questions"=>10,
-              "show_answer"=>false, "timeout"=>60, "jid"=>"", "password"=>"",
-              "room"=>""}
+    expect = { 'category' => 'all', 'debug' => false, 'level' => 'all',
+               'language' => 'all', 'number_of_questions' => 10,
+               'show_answer' => false, 'timeout' => 60, 'jid' => '',
+               'password' => '', 'room' => '' }
     assert_equal expect, @config.to_h
   end
 
   def test_load
     config = Configuration.new
-    YAML.stub(:load_file, {'debug' => true, 'test1' => 'foo'}) do
+    YAML.stub(:load_file, 'debug' => true, 'test1' => 'foo') do
       config.load
-      expect = {"category"=>"all", "debug"=>true, "level"=>"all",
-                "language"=>"all", "number_of_questions"=>10,
-                "show_answer"=>false, "timeout"=>60, "jid"=>"", "password"=>"",
-                "room"=>"", "test1"=>"foo"}
+      expect = { 'category' => 'all', 'debug' => true, 'level' => 'all',
+                 'language' => 'all', 'number_of_questions' => 10,
+                 'show_answer' => false, 'timeout' => 60, 'jid' => '',
+                 'password' => '', 'room' => '', 'test1' => 'foo' }
       assert_equal expect, config.to_h
     end
   end
