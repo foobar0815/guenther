@@ -16,7 +16,7 @@ GNU General Public License version 2 (GPLv2).
 ## Usage
 
 ```
-./guenther [options]
+$ guenther [options]
     -j, --jid JID                    Jabber identifier
     -p, --password PASSWORD          Password
     -r, --room ROOM                  Multi-user chat room (room@conference.example.com/nick)
