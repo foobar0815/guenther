@@ -13,8 +13,13 @@ file.
 [MoxQuizz](http://moxquizz.de) data files are distributed under the terms of the
 GNU General Public License version 2 (GPLv2).
 
-## TODO
+## Usage
 
-* Remember already asked questions
-* Persistent configuration parameters
-* Answer command
+```
+$ guenther [options]
+    -j, --jid JID                    Jabber identifier
+    -p, --password PASSWORD          Password
+    -r, --room ROOM                  Multi-user chat room (room@conference.example.com/nick)
+    -d, --debug                      Enables XMPP debug logging
+    -h, --help                       Prints this help message
+```
